@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PauseLab — Sistema de Notificaciones</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --verde: #7D8B7A;
+    --verde-claro: #B9C6B9;
+    --verde-bg: #e8f0e8;
+    --azul: #2B2D42;
+    --bg: #f4f7f6;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --muted: #e8eeec;
+    --muted-fg: #6b7268;
+    --fg: #2d3748;
+    --amber: #f59e0b;
+    --amber-bg: #fef3c7;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--fg); -webkit-font-smoothing:antialiased; }
+
+  /* PAGE HEADER */
+  .page-top {
+    background:var(--azul); padding:48px 64px 40px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+  }
+  .page-top-inner { max-width:960px; margin:0 auto; }
+  .page-eyebrow { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--verde-claro); font-weight:600; margin-bottom:14px; display:flex; align-items:center; gap:10px; }
+  .page-eyebrow::before { content:''; width:22px; height:1.5px; background:var(--verde-claro); display:block; }
+  .page-title { font-size:32px; font-weight:700; color:white; letter-spacing:-0.02em; line-height:1.1; margin-bottom:12px; }
+  .page-sub { font-size:15px; color:rgba(255,255,255,0.5); line-height:1.65; max-width:600px; }
+
+  /* FLOW STEPS NAV */
+  .steps-nav {
+    max-width:960px; margin:0 auto;
+    display:flex; gap:0; margin-top:36px;
+  }
+  .step-tab {
+    flex:1; display:flex; align-items:center; gap:10px;
+    padding:12px 18px; border-radius:10px; cursor:pointer;
+    transition:background 0.15s; border:none; background:transparent;
+    font-family:'DM Sans',sans-serif;
+  }
+  .step-tab:hover { background:rgba(255,255,255,0.06); }
+  .step-tab.active { background:rgba(185,198,185,0.15); }
+  .step-num {
+    width:26px; height:26px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700;
+    background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.5);
+    border:1.5px solid rgba(255,255,255,0.12);
+  }
+  .step-tab.active .step-num { background:var(--verde); color:white; border-color:var(--verde); }
+  .step-tab.done .step-num { background:rgba(125,139,122,0.3); color:var(--verde-claro); border-color:var(--verde); }
+  .step-info { text-align:left; }
+  .step-label { font-size:12px; font-weight:600; color:rgba(255,255,255,0.5); line-height:1.2; }
+  .step-tab.active .step-label { color:white; }
+  .step-tab.done  .step-label { color:rgba(255,255,255,0.6); }
+  .step-sublabel { font-size:10px; color:rgba(255,255,255,0.3); margin-top:2px; }
+  .step-tab.active .step-sublabel { color:rgba(255,255,255,0.45); }
+  .step-arrow { color:rgba(255,255,255,0.15); font-size:18px; display:flex; align-items:center; padding:0 4px; }
+
+  /* MAIN */
+  main { max-width:960px; margin:0 auto; padding:40px 64px 64px; }
+
+  /* FLOW SECTION */
+  .flow-section { display:none; }
+  .flow-section.active { display:block; }
+
+  /* TRIGGER BADGE */
+  .trigger-row { display:flex; align-items:flex-start; gap:16px; margin-bottom:32px; }
+  .trigger-icon { width:44px; height:44px; border-radius:12px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .trigger-icon.green  { background:var(--verde-bg); }
+  .trigger-icon.amber  { background:var(--amber-bg); }
+  .trigger-icon.blue   { background:#dbeafe; }
+  .trigger-body {}
+  .trigger-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.14em; color:var(--muted-fg); margin-bottom:4px; }
+  .trigger-title { font-size:18px; font-weight:700; color:var(--azul); letter-spacing:-0.01em; margin-bottom:6px; }
+  .trigger-desc { font-size:14px; color:var(--muted-fg); line-height:1.65; max-width:600px; }
+
+  /* FLOW LAYOUT: trigger context + mail */
+  .flow-grid { display:grid; grid-template-columns:1fr 1.6fr; gap:24px; align-items:start; }
+
+  /* CONTEXT CARD */
+  .context-card { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+  .context-header { padding:14px 18px; border-bottom:1px solid var(--border); background:var(--muted); display:flex; align-items:center; gap:8px; }
+  .context-header-dot { width:8px; height:8px; border-radius:50%; }
+  .context-header span { font-size:11px; font-weight:600; color:var(--muted-fg); text-transform:uppercase; letter-spacing:0.1em; }
+  .context-body { padding:18px; }
+  .context-event { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:10px; background:var(--bg); border:1px solid var(--border); margin-bottom:10px; }
+  .context-event:last-child { margin-bottom:0; }
+  .event-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+  .event-dot.green { background:var(--verde); }
+  .event-dot.amber { background:var(--amber); }
+  .event-dot.red   { background:#ef4444; }
+  .event-dot.blue  { background:#3b82f6; }
+  .event-text { font-size:12px; color:var(--fg); line-height:1.5; }
+  .event-text strong { font-weight:600; }
+  .event-time { font-size:10px; color:var(--muted-fg); margin-top:2px; font-family:monospace; }
+
+  /* TIMER BAR */
+  .timer-wrap { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-top:10px; }
+  .timer-label { font-size:11px; color:var(--muted-fg); font-weight:500; margin-bottom:8px; display:flex; justify-content:space-between; }
+  .timer-label span { font-weight:700; color:var(--azul); font-size:13px; font-family:monospace; }
+  .timer-bar-bg { height:6px; background:var(--muted); border-radius:999px; overflow:hidden; }
+  .timer-bar-fill { height:100%; border-radius:999px; background:var(--amber); width:100%; transition:width 0.1s linear; }
+  .timer-note { font-size:10px; color:var(--muted-fg); margin-top:6px; line-height:1.5; }
+
+  .logic-chip { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:600; margin-top:8px; }
+  .logic-chip.green { background:var(--verde-bg); color:var(--verde); }
+  .logic-chip.amber { background:var(--amber-bg); color:#b45309; }
+
+  /* RECIPIENTS */
+  .recipients { margin-top:12px; }
+  .recipients-label { font-size:11px; color:var(--muted-fg); font-weight:600; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.08em; }
+  .recipient-list { display:flex; flex-direction:column; gap:6px; }
+  .recipient-row { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:8px; background:var(--bg); border:1px solid var(--border); }
+  .rec-avatar { width:22px; height:22px; border-radius:50%; background:var(--verde); color:white; font-size:9px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .rec-name { font-size:12px; font-weight:500; color:var(--fg); flex:1; }
+  .rec-badge { font-size:9px; padding:2px 7px; border-radius:999px; font-weight:600; }
+  .rec-badge.active { background:var(--verde-bg); color:var(--verde); }
+  .rec-badge.freq { background:#dbeafe; color:#2563eb; }
+
+  /* MAIL MOCKUP */
+  .mail-mockup { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; box-shadow:0 8px 32px rgba(43,45,66,0.08); }
+
+  /* Mail client chrome */
+  .mail-chrome { background:#f8f9fa; border-bottom:1px solid var(--border); padding:14px 18px; display:flex; align-items:center; gap:12px; }
+  .mail-chrome-dots { display:flex; gap:5px; }
+  .mail-chrome-dot { width:10px; height:10px; border-radius:50%; }
+  .mail-chrome-title { font-size:11px; color:var(--muted-fg); font-weight:500; letter-spacing:0.02em; }
+
+  /* Mail header */
+  .mail-header { padding:20px 24px 16px; border-bottom:1px solid var(--border); }
+  .mail-subject { font-size:16px; font-weight:700; color:var(--azul); margin-bottom:12px; line-height:1.3; }
+  .mail-meta { display:flex; flex-direction:column; gap:4px; }
+  .mail-meta-row { display:flex; align-items:center; gap:8px; font-size:12px; }
+  .mail-meta-label { color:var(--muted-fg); min-width:32px; }
+  .mail-meta-value { color:var(--fg); font-weight:500; }
+  .mail-meta-time { color:var(--muted-fg); font-size:11px; margin-left:auto; }
+
+  /* Mail body */
+  .mail-body { padding:28px 24px 24px; }
+
+  .mail-logo-row { display:flex; align-items:center; gap:8px; margin-bottom:24px; }
+  .mail-logo-icon { width:28px; height:28px; border-radius:7px; background:var(--verde); display:flex; align-items:center; justify-content:center; }
+  .mail-logo-icon svg { width:13px; height:13px; }
+  .mail-logo-text { font-size:14px; font-weight:700; color:var(--azul); letter-spacing:0.02em; }
+
+  .mail-greeting { font-size:15px; color:var(--fg); margin-bottom:12px; font-weight:500; }
+  .mail-para { font-size:13px; color:var(--muted-fg); line-height:1.7; margin-bottom:14px; }
+  .mail-para strong { color:var(--fg); font-weight:600; }
+
+  .mail-info-box { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:16px 20px; margin:18px 0; }
+  .mail-info-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .mail-info-row:last-child { margin-bottom:0; }
+  .mail-info-icon { width:28px; height:28px; border-radius:8px; background:var(--verde-bg); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .mail-info-icon svg { width:13px; height:13px; color:var(--verde); }
+  .mail-info-label { font-size:11px; color:var(--muted-fg); }
+  .mail-info-value { font-size:13px; font-weight:600; color:var(--azul); }
+
+  .mail-btn { display:inline-block; background:var(--verde); color:white; padding:12px 28px; border-radius:9px; font-size:13px; font-weight:600; text-decoration:none; margin:4px 0 18px; cursor:pointer; border:none; font-family:'DM Sans',sans-serif; transition:opacity 0.15s; }
+  .mail-btn:hover { opacity:0.88; }
+  .mail-btn.outline { background:transparent; color:var(--verde); border:1.5px solid var(--verde); }
+  .mail-btn.amber-btn { background:var(--amber); }
+
+  .mail-footer-note { font-size:11px; color:var(--muted-fg); line-height:1.6; padding-top:16px; border-top:1px solid var(--border); margin-top:8px; }
+  .mail-cancel-link { color:var(--verde); text-decoration:underline; cursor:pointer; }
+
+  .mail-urgent-badge { display:inline-flex; align-items:center; gap:5px; background:var(--amber-bg); color:#92400e; font-size:11px; font-weight:700; padding:5px 12px; border-radius:999px; margin-bottom:16px; }
+
+  /* BLOCKING OVERLAY on mail */
+  .mail-blocked { position:relative; }
+  .mail-blocked::after { display:none; }
+  .mail-blocked.show-block::after {
+    content:''; position:absolute; inset:0; background:rgba(255,255,255,0.7);
+    backdrop-filter:blur(2px); z-index:2; border-radius:0 0 16px 16px;
+    display:flex;
+  }
+  .blocked-msg { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:3; background:white; border:1px solid var(--border); border-radius:14px; padding:20px 28px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.12); display:none; min-width:240px; }
+  .blocked-msg.show { display:block; }
+  .blocked-title { font-size:14px; font-weight:700; color:var(--azul); margin-bottom:4px; }
+  .blocked-sub { font-size:12px; color:var(--muted-fg); }
+
+  /* NAVIGATION BUTTONS */
+  .nav-btns { display:flex; justify-content:space-between; align-items:center; margin-top:40px; padding-top:24px; border-top:1px solid var(--border); }
+  .nav-btn { display:flex; align-items:center; gap:8px; padding:11px 22px; border-radius:10px; border:1.5px solid var(--border); background:transparent; color:var(--fg); font-size:14px; font-weight:500; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
+  .nav-btn:hover { border-color:var(--verde); color:var(--verde); }
+  .nav-btn.primary { background:var(--verde); color:white; border-color:var(--verde); }
+  .nav-btn.primary:hover { opacity:0.88; }
+  .nav-btn:disabled { opacity:0.3; cursor:not-allowed; }
+  .nav-btn svg { width:14px; height:14px; }
+
+  .step-indicator { font-size:12px; color:var(--muted-fg); }
+  .step-indicator strong { color:var(--verde); }
+
+  /* INTERACTIVE HINT */
+  .hint { display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--muted-fg); background:var(--muted); padding:5px 10px; border-radius:999px; margin-bottom:20px; }
+  .hint svg { width:12px; height:12px; }
+
+  /* TAGS */
+  .tag { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px; font-size:10px; font-weight:600; }
+  .tag.instant { background:#dcfce7; color:#15803d; }
+  .tag.delayed { background:#fef3c7; color:#b45309; }
+  .tag.conditional { background:#ede9fe; color:#6d28d9; }
+</style>
+</head>
+<body>
+
+<!-- PAGE HEADER -->
+<div class="page-top">
+  <div class="page-top-inner">
+    <div class="page-eyebrow">Sistema de notificaciones</div>
+    <div class="page-title">Comunicaciones automáticas al usuario</div>
+    <div class="page-sub">Tres flujos de mail transaccional que operan sin intervención manual, disparados por eventos del sistema de reservas.</div>
+
+    <!-- STEP TABS -->
+    <div class="steps-nav">
+      <button class="step-tab active" onclick="goTo(0)" id="tab0">
+        <div class="step-num">1</div>
+        <div class="step-info">
+          <div class="step-label">Confirmación</div>
+          <div class="step-sublabel">Al reservar</div>
+        </div>
+      </button>
+      <div class="step-arrow">›</div>
+      <button class="step-tab" onclick="goTo(1)" id="tab1">
+        <div class="step-num">2</div>
+        <div class="step-info">
+          <div class="step-label">Recordatorio</div>
+          <div class="step-sublabel">30 min antes</div>
+        </div>
+      </button>
+      <div class="step-arrow">›</div>
+      <button class="step-tab" onclick="goTo(2)" id="tab2">
+        <div class="step-num">3</div>
+        <div class="step-info">
+          <div class="step-label">Slot disponible</div>
+          <div class="step-sublabel">Por cancelación</div>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+<!-- ══════════════════════════════════
+     FLOW 1: CONFIRMACIÓN
+══════════════════════════════════ -->
+<div class="flow-section active" id="flow0">
+  <div class="trigger-row">
+    <div class="trigger-icon green">✅</div>
+    <div class="trigger-body">
+      <div class="trigger-label">Trigger del sistema <span class="tag instant" style="vertical-align:middle">Inmediato</span></div>
+      <div class="trigger-title">El usuario confirma una reserva</div>
+      <div class="trigger-desc">En el momento en que se confirma el slot en el calendario, el backend dispara un mail transaccional al correo corporativo del colaborador. El envío es instantáneo y no requiere acción manual.</div>
+    </div>
+  </div>
+
+  <div class="flow-grid">
+    <div>
+      <div class="context-card">
+        <div class="context-header">
+          <div class="context-header-dot" style="background:#22c55e"></div>
+          <span>Evento del sistema</span>
+        </div>
+        <div class="context-body">
+          <div class="context-event">
+            <div class="event-dot green"></div>
+            <div>
+              <div class="event-text"><strong>Reserva confirmada</strong> — Jueves 14:00</div>
+              <div class="event-time">Usuario: c.andrade@empresa.com</div>
+            </div>
+          </div>
+          <div class="context-event">
+            <div class="event-dot blue"></div>
+            <div>
+              <div class="event-text">Slot marcado como <strong>ocupado</strong> en el calendario</div>
+              <div class="event-time">Cabina 1 · 20 min</div>
+            </div>
+          </div>
+          <div class="context-event">
+            <div class="event-dot green"></div>
+            <div>
+              <div class="event-text"><strong>Mail disparado</strong> vía SendGrid</div>
+              <div class="event-time">Latencia estimada: &lt; 5 seg</div>
+            </div>
+          </div>
+          <div class="logic-chip green">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Envío siempre, sin condiciones
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mail-mockup">
+      <div class="mail-chrome">
+        <div class="mail-chrome-dots">
+          <div class="mail-chrome-dot" style="background:#ff5f57"></div>
+          <div class="mail-chrome-dot" style="background:#febc2e"></div>
+          <div class="mail-chrome-dot" style="background:#28c840"></div>
+        </div>
+        <div class="mail-chrome-title">Bandeja de entrada — c.andrade@empresa.com</div>
+      </div>
+      <div class="mail-header">
+        <div class="mail-subject">⏸ Tu pausa quedó confirmada — Jueves 14:00</div>
+        <div class="mail-meta">
+          <div class="mail-meta-row">
+            <span class="mail-meta-label">De</span>
+            <span class="mail-meta-value">PauseLab &lt;pausas@pauselab.com&gt;</span>
+          </div>
+          <div class="mail-meta-row">
+            <span class="mail-meta-label">Para</span>
+            <span class="mail-meta-value">c.andrade@empresa.com</span>
+            <span class="mail-meta-time">Hoy, 11:32</span>
+          </div>
+        </div>
+      </div>
+      <div class="mail-body">
+        <div class="mail-logo-row">
+          <div class="mail-logo-icon">
+            <svg viewBox="0 0 13 13" fill="none"><rect x="3" y="2" width="2.5" height="9" rx="1.25" fill="white"/><rect x="7.5" y="2" width="2.5" height="9" rx="1.25" fill="white"/></svg>
+          </div>
+          <span class="mail-logo-text">PAUSELAB</span>
+        </div>
+        <div class="mail-greeting">Hola Carlos, tu pausa quedó agendada. 🎉</div>
+        <div class="mail-para">Tu espacio de desconexión está reservado. La cabina te va a estar esperando a la hora indicada.</div>
+        <div class="mail-info-box">
+          <div class="mail-info-row">
+            <div class="mail-info-icon"><svg viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11Z" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5v3l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+            <div><div class="mail-info-label">Horario</div><div class="mail-info-value">Jueves 29 de mayo · 14:00 hs</div></div>
+          </div>
+          <div class="mail-info-row">
+            <div class="mail-info-icon"><svg viewBox="0 0 14 14" fill="none"><rect x="2" y="2" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M5 7h4M5 5h4M5 9h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></div>
+            <div><div class="mail-info-label">Duración</div><div class="mail-info-value">20 minutos</div></div>
+          </div>
+          <div class="mail-info-row">
+            <div class="mail-info-icon"><svg viewBox="0 0 14 14" fill="none"><path d="M7 1.5C5.07 1.5 3.5 3.07 3.5 5c0 2.63 3.5 7 3.5 7s3.5-4.37 3.5-7c0-1.93-1.57-3.5-3.5-3.5Z" stroke="currentColor" stroke-width="1.3"/><circle cx="7" cy="5" r="1.2" fill="currentColor"/></svg></div>
+            <div><div class="mail-info-label">Ubicación</div><div class="mail-info-value">Cabina 1 · Piso 3</div></div>
+          </div>
+        </div>
+        <div class="mail-para" style="margin-bottom:8px">¿Necesitás cancelar? Podés hacerlo hasta 30 minutos antes sin inconvenientes.</div>
+        <a class="mail-btn outline" style="font-size:12px;padding:9px 20px">Cancelar esta pausa</a>
+        <div class="mail-footer-note">Este es un mail automático de PauseLab. Si no fuiste vos quien agendó esta pausa, <span class="mail-cancel-link">contactá a tu área de RRHH</span>.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     FLOW 2: RECORDATORIO
+══════════════════════════════════ -->
+<div class="flow-section" id="flow1">
+  <div class="trigger-row">
+    <div class="trigger-icon amber">⏰</div>
+    <div class="trigger-body">
+      <div class="trigger-label">Trigger del sistema <span class="tag delayed" style="vertical-align:middle">30 min antes</span></div>
+      <div class="trigger-title">Recordatorio previo a la sesión</div>
+      <div class="trigger-desc">El sistema programa un job al momento de la reserva. 30 minutos antes del inicio, se dispara el recordatorio automáticamente. Objetivo: reducir el ausentismo y reforzar el hábito de la pausa.</div>
+    </div>
+  </div>
+
+  <div class="flow-grid">
+    <div>
+      <div class="context-card">
+        <div class="context-header">
+          <div class="context-header-dot" style="background:var(--amber)"></div>
+          <span>Evento del sistema</span>
+        </div>
+        <div class="context-body">
+          <div class="context-event">
+            <div class="event-dot green"></div>
+            <div>
+              <div class="event-text"><strong>Job programado</strong> al confirmar reserva</div>
+              <div class="event-time">T-30min del inicio de sesión</div>
+            </div>
+          </div>
+          <div class="context-event">
+            <div class="event-dot amber"></div>
+            <div>
+              <div class="event-text"><strong>Disparador activado</strong> — 13:30 hs</div>
+              <div class="event-time">30 min antes del turno 14:00</div>
+            </div>
+          </div>
+          <div class="context-event">
+            <div class="event-dot green"></div>
+            <div>
+              <div class="event-text"><strong>Mail enviado</strong> al colaborador</div>
+              <div class="event-time">Solo si la reserva sigue activa</div>
+            </div>
+          </div>
+          <div class="logic-chip amber">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="currentColor" stroke-width="1.3"/><path d="M5 3v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            Se cancela si el slot fue cancelado
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mail-mockup">
+      <div class="mail-chrome">
+        <div class="mail-chrome-dots">
+          <div class="mail-chrome-dot" style="background:#ff5f57"></div>
+          <div class="mail-chrome-dot" style="background:#febc2e"></div>
+          <div class="mail-chrome-dot" style="background:#28c840"></div>
+        </div>
+        <div class="mail-chrome-title">Bandeja de entrada — c.andrade@empresa.com</div>
+      </div>
+      <div class="mail-header">
+        <div class="mail-subject">⏸ Tu pausa empieza en 30 minutos</div>
+        <div class="mail-meta">
+          <div class="mail-meta-row">
+            <span class="mail-meta-label">De</span>
+            <span class="mail-meta-value">PauseLab &lt;pausas@pauselab.com&gt;</span>
+          </div>
+          <div class="mail-meta-row">
+            <span class="mail-meta-label">Para</span>
+            <span class="mail-meta-value">c.andrade@empresa.com</span>
+            <span class="mail-meta-time">Hoy, 13:30</span>
+          </div>
+        </div>
+      </div>
+      <div class="mail-body">
+        <div class="mail-logo-row">
+          <div class="mail-logo-icon">
+            <svg viewBox="0 0 13 13" fill="none"><rect x="3" y="2" width="2.5" height="9" rx="1.25" fill="white"/><rect x="7.5" y="2" width="2.5" height="9" rx="1.25" fill="white"/></svg>
+          </div>
+          <span class="mail-logo-text">PAUSELAB</span>
+        </div>
+        <div class="mail-urgent-badge">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M6 4v3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="6" cy="8.5" r=".7" fill="currentColor"/></svg>
+          En 30 minutos
+        </div>
+        <div class="mail-greeting">Carlos, es hora de prepararse para tu pausa. 🌿</div>
+        <div class="mail-para">Tu sesión de relajación arranca en 30 minutos. La cabina te va a esperar lista.</div>
+        <div class="mail-info-box">
+          <div class="mail-info-row">
+            <div class="mail-info-icon"><svg viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11Z" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5v3l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+            <div><div class="mail-info-label">Empieza a las</div><div class="mail-info-value">14:00 hs · ya casi</div></div>
+          </div>
+          <div class="mail-info-row">
+            <div class="mail-info-icon"><svg viewBox="0 0 14 14" fill="none"><path d="M7 1.5C5.07 1.5 3.5 3.07 3.5 5c0 2.63 3.5 7 3.5 7s3.5-4.37 3.5-7c0-1.93-1.57-3.5-3.5-3.5Z" stroke="currentColor" stroke-width="1.3"/><circle cx="7" cy="5" r="1.2" fill="currentColor"/></svg></div>
+            <div><div class="mail-info-label">Lugar</div><div class="mail-info-value">Cabina 1 · Piso 3</div></div>
+          </div>
+        </div>
+        <div class="mail-para">Si no podés ir, cancelá antes de las 13:30 para liberar el turno a un compañero.</div>
+        <a class="mail-btn outline" style="font-size:12px;padding:9px 20px">Cancelar si no voy</a>
+        <div class="mail-footer-note">Si cancelás con menos de 30 minutos de anticipación, el turno queda ocioso. Ayudanos a mantener la cabina en uso.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     FLOW 3: SLOT DISPONIBLE + BLOQUEO
+══════════════════════════════════ -->
+<div class="flow-section" id="flow2">
+  <div class="trigger-row">
+    <div class="trigger-icon" style="background:#ede9fe;font-size:18px">🔔</div>
+    <div class="trigger-body">
+      <div class="trigger-label">Trigger del sistema <span class="tag conditional" style="vertical-align:middle">Condicional</span></div>
+      <div class="trigger-title">Slot liberado por cancelación + bloqueo temporal</div>
+      <div class="trigger-desc">Cuando alguien cancela con más de 30 min de anticipación, el sistema notifica a hasta 8 usuarios priorizados. El primero que intenta reservar bloquea el slot por 3 minutos. Si no confirma, vuelve a estar disponible.</div>
+    </div>
+  </div>
+
+  <div class="flow-grid">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <!-- CONDICIONES -->
+      <div class="context-card">
+        <div class="context-header">
+          <div class="context-header-dot" style="background:#a78bfa"></div>
+          <span>Condiciones del flujo</span>
+        </div>
+        <div class="context-body">
+          <div class="context-event">
+            <div class="event-dot red"></div>
+            <div>
+              <div class="event-text"><strong>Cancelación</strong> — slot 15:20 liberado</div>
+              <div class="event-time">Hoy 14:45 · más de 30 min de anticipación ✓</div>
+            </div>
+          </div>
+          <div class="context-event">
+            <div class="event-dot green"></div>
+            <div>
+              <div class="event-text"><strong>Condición OK</strong> — usuarios activos en 24hs</div>
+              <div class="event-time">23 usuarios activos encontrados</div>
+            </div>
+          </div>
+          <div class="context-event">
+            <div class="event-dot blue"></div>
+            <div>
+              <div class="event-text"><strong>8 destinatarios</strong> seleccionados</div>
+              <div class="event-time">Por actividad reciente + frecuencia histórica</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DESTINATARIOS -->
+      <div class="context-card">
+        <div class="context-header">
+          <div class="context-header-dot" style="background:#3b82f6"></div>
+          <span>Destinatarios seleccionados</span>
+        </div>
+        <div class="context-body">
+          <div class="recipients">
+            <div class="recipients-label">Ordenados por prioridad</div>
+            <div class="recipient-list">
+              <div class="recipient-row"><div class="rec-avatar">MA</div><div class="rec-name">M. Alvarez</div><span class="rec-badge active">Activo hoy</span></div>
+              <div class="recipient-row"><div class="rec-avatar">JP</div><div class="rec-name">J. Pereira</div><span class="rec-badge active">Activo hoy</span></div>
+              <div class="recipient-row"><div class="rec-avatar">LG</div><div class="rec-name">L. Gómez</div><span class="rec-badge freq">Alta frecuencia</span></div>
+              <div class="recipient-row"><div class="rec-avatar">SR</div><div class="rec-name">S. Ríos</div><span class="rec-badge freq">Alta frecuencia</span></div>
+              <div class="recipient-row" style="opacity:0.45"><div class="rec-avatar" style="background:var(--muted-fg)">+4</div><div class="rec-name" style="font-size:11px;color:var(--muted-fg)">4 destinatarios más</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BLOQUEO TIMER -->
+      <div class="context-card">
+        <div class="context-header">
+          <div class="context-header-dot" style="background:var(--amber)"></div>
+          <span>Bloqueo temporal activo</span>
+        </div>
+        <div class="context-body">
+          <div class="timer-wrap">
+            <div class="timer-label">Slot en proceso de reserva <span id="timerDisplay">3:00</span></div>
+            <div class="timer-bar-bg"><div class="timer-bar-fill" id="timerBar"></div></div>
+            <div class="timer-note">M. Alvarez está confirmando la reserva. Si no lo hace en 3 minutos, el slot vuelve a estar disponible para todos.</div>
+          </div>
+          <button onclick="startTimer()" style="margin-top:10px;width:100%;padding:9px;background:var(--verde);color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">▶ Simular bloqueo de 3 min</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIL -->
+    <div class="mail-mockup">
+      <div class="mail-chrome">
+        <div class="mail-chrome-dots">
+          <div class="mail-chrome-dot" style="background:#ff5f57"></div>
+          <div class="mail-chrome-dot" style="background:#febc2e"></div>
+          <div class="mail-chrome-dot" style="background:#28c840"></div>
+        </div>
+        <div class="mail-chrome-title">Bandeja de entrada — m.alvarez@empresa.com</div>
+      </div>
+      <div class="mail-header">
+        <div class="mail-subject">🟢 Se liberó un turno — ¿Lo querés?</div>
+        <div class="mail-meta">
+          <div class="mail-meta-row">
+            <span class="mail-meta-label">De</span>
+            <span class="mail-meta-value">PauseLab &lt;pausas@pauselab.com&gt;</span>
+          </div>
+          <div class="mail-meta-row">
+            <span class="mail-meta-label">Para</span>
+            <span class="mail-meta-value">m.alvarez@empresa.com</span>
+            <span class="mail-meta-time">Hoy, 14:45</span>
+          </div>
+        </div>
+      </div>
+      <div class="mail-body" id="mailBody3">
+        <div class="mail-logo-row">
+          <div class="mail-logo-icon">
+            <svg viewBox="0 0 13 13" fill="none"><rect x="3" y="2" width="2.5" height="9" rx="1.25" fill="white"/><rect x="7.5" y="2" width="2.5" height="9" rx="1.25" fill="white"/></svg>
+          </div>
+          <span class="mail-logo-text">PAUSELAB</span>
+        </div>
+        <div class="mail-greeting">Hola Martina, apareció un turno disponible.</div>
+        <div class="mail-para">Alguien canceló su pausa y quedó un slot libre. Te avisamos porque sos una de las primeras en la lista de prioridad.</div>
+        <div class="mail-info-box">
+          <div class="mail-info-row">
+            <div class="mail-info-icon"><svg viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11Z" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5v3l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+            <div><div class="mail-info-label">Horario disponible</div><div class="mail-info-value">Hoy · 15:20 hs</div></div>
+          </div>
+          <div class="mail-info-row">
+            <div class="mail-info-icon"><svg viewBox="0 0 14 14" fill="none"><rect x="2" y="2" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M5 7h4M5 5h4M5 9h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></div>
+            <div><div class="mail-info-label">Duración</div><div class="mail-info-value">20 minutos</div></div>
+          </div>
+        </div>
+        <div class="mail-para">Para reservarlo, entrá a la plataforma. El slot va a aparecer disponible hasta que alguien más lo tome.</div>
+        <a class="mail-btn" onclick="simulateBlock()">Ver disponibilidad en PauseLab</a>
+        <div id="blockNotice" style="display:none;background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#92400e;line-height:1.6">
+          <strong>⏳ Este slot está siendo reservado por otro usuario.</strong><br>
+          Si no se confirma en los próximos 3 minutos, vuelve a estar disponible automáticamente.
+        </div>
+        <div class="mail-footer-note">Recibiste este mail porque sos usuaria frecuente de PauseLab. Solo 8 personas recibieron esta notificación.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV BUTTONS -->
+<div class="nav-btns">
+  <button class="nav-btn" id="btnPrev" onclick="navigate(-1)" disabled>
+    <svg viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Anterior
+  </button>
+  <span class="step-indicator">Flujo <strong id="currentStepLabel">1</strong> de 3</span>
+  <button class="nav-btn primary" id="btnNext" onclick="navigate(1)">
+    Siguiente
+    <svg viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+</div>
+
+</main>
+
+<script>
+let current = 0;
+const total = 3;
+
+function goTo(n) {
+  document.getElementById('flow'+current).classList.remove('active');
+  document.getElementById('tab'+current).classList.remove('active');
+  document.getElementById('tab'+current).classList.add('done');
+  current = n;
+  document.getElementById('flow'+current).classList.add('active');
+  document.getElementById('tab'+current).classList.add('active');
+  document.getElementById('tab'+current).classList.remove('done');
+  document.getElementById('currentStepLabel').textContent = current+1;
+  document.getElementById('btnPrev').disabled = current === 0;
+  document.getElementById('btnNext').disabled = current === total-1;
+  document.getElementById('btnNext').textContent = current === total-1 ? 'Fin' : 'Siguiente';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function navigate(dir) {
+  const next = current + dir;
+  if(next >= 0 && next < total) goTo(next);
+}
+
+// TIMER
+let timerInterval = null;
+let timerSeconds = 180;
+let timerRunning = false;
+
+function startTimer() {
+  if(timerRunning) { clearInterval(timerInterval); timerRunning=false; timerSeconds=180; updateTimerDisplay(); return; }
+  timerRunning = true;
+  timerSeconds = 180;
+  timerInterval = setInterval(() => {
+    timerSeconds--;
+    updateTimerDisplay();
+    if(timerSeconds <= 0) {
+      clearInterval(timerInterval);
+      timerRunning = false;
+      document.getElementById('timerBar').style.background = '#22c55e';
+      document.getElementById('timerDisplay').textContent = '✓ Disponible';
+      document.getElementById('blockNotice').style.display = 'none';
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(timerSeconds/60);
+  const s = timerSeconds % 60;
+  document.getElementById('timerDisplay').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  const pct = (timerSeconds/180)*100;
+  const bar = document.getElementById('timerBar');
+  bar.style.width = pct+'%';
+  bar.style.background = pct > 50 ? '#f59e0b' : pct > 20 ? '#f97316' : '#ef4444';
+}
+
+function simulateBlock() {
+  document.getElementById('blockNotice').style.display = 'block';
+  document.getElementById('blockNotice').scrollIntoView({behavior:'smooth',block:'nearest'});
+  if(!timerRunning) startTimer();
+}
+
+updateTimerDisplay();
+</script>
+</body>
+</html>

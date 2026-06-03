@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PauseLab — Calendario de Pausas</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background: #f4f7f6;
+    --foreground: #1c2b28;
+    --card: #ffffff;
+    --primary: #7D8B7A;
+    --primary-fg: #ffffff;
+    --secondary: #dff0ed;
+    --muted: #e8eeec;
+    --muted-fg: #6b8480;
+    --border: rgba(125,139,122,0.18);
+    --border-solid: #dde5e3;
+    --occupied: #ece9e4;
+    --radius: 0.625rem;
+    --azul: #2B2D42;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { font-size: 16px; }
+  body {
+    min-height: 100vh; background: var(--background);
+    color: var(--foreground); font-family: 'DM Sans', sans-serif;
+    font-weight: 400; -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--card); border-bottom: 1px solid var(--border-solid);
+    padding: 12px 24px; display: flex; align-items: center;
+    justify-content: space-between; position: sticky; top: 0; z-index: 30;
+  }
+  .logo-wrap { display: flex; align-items: center; gap: 10px; }
+  .logo-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--primary); display: flex; align-items: center; justify-content: center; }
+  .logo-text { font-size: 17px; font-weight: 600; color: var(--foreground); letter-spacing: -0.02em; }
+  nav.main-nav { display: flex; align-items: center; gap: 2px; }
+  nav.main-nav button { padding: 6px 16px; border-radius: 6px; font-size: 14px; font-weight: 500; border: none; cursor: pointer; transition: background 0.15s, color 0.15s; background: transparent; color: var(--muted-fg); font-family: 'DM Sans', sans-serif; }
+  nav.main-nav button:hover { background: var(--muted); color: var(--foreground); }
+  nav.main-nav button.active { background: var(--secondary); color: var(--primary); }
+  .user-btn { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 12px; background: var(--secondary); border: none; cursor: pointer; transition: background 0.15s; position: relative; font-family: 'DM Sans', sans-serif; }
+  .user-btn:hover { background: var(--muted); }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: white; flex-shrink: 0; }
+  .user-name { font-size: 13px; font-weight: 500; color: var(--foreground); }
+  .chevron { width: 12px; height: 12px; color: var(--muted-fg); transition: transform 0.2s; }
+  .user-btn.open .chevron { transform: rotate(90deg); }
+  .user-menu { position: absolute; right: 0; top: calc(100% + 8px); width: 210px; background: var(--card); border: 1px solid var(--border-solid); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); overflow: hidden; z-index: 50; opacity: 0; pointer-events: none; transform: translateY(-6px); transition: opacity 0.15s, transform 0.15s; }
+  .user-menu.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+  .user-menu-header { padding: 12px 16px; border-bottom: 1px solid var(--border-solid); }
+  .user-menu-header p { font-size: 13px; font-weight: 600; color: var(--foreground); }
+  .user-menu-header span { font-size: 11px; color: var(--muted-fg); }
+  .menu-item { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-size: 13px; color: var(--foreground); background: transparent; border: none; cursor: pointer; text-align: left; transition: background 0.12s; font-family: 'DM Sans', sans-serif; }
+  .menu-item:hover { background: var(--muted); }
+  .menu-item.danger { color: #d4183d; border-top: 1px solid var(--border-solid); }
+  .menu-item svg { width: 13px; height: 13px; opacity: 0.6; }
+
+  /* MAIN */
+  main { flex: 1; max-width: 1100px; width: 100%; margin: 0 auto; padding: 32px; display: flex; flex-direction: column; gap: 24px; }
+
+  /* SUMMARY */
+  .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .summary-card { border-radius: 16px; padding: 16px; border: 1px solid var(--border-solid); background: var(--card); display: flex; flex-direction: column; gap: 8px; }
+  .summary-card.accent { background: var(--primary); color: white; border-color: var(--primary); }
+  .card-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; }
+  .summary-card.accent .card-icon { background: rgba(255,255,255,0.2); }
+  .card-icon svg { width: 15px; height: 15px; color: var(--primary); }
+  .summary-card.accent .card-icon svg { color: white; }
+  .card-value { font-size: 22px; font-weight: 600; color: var(--foreground); line-height: 1; }
+  .summary-card.accent .card-value { color: white; }
+  .card-unit { font-size: 11px; color: var(--muted-fg); margin-top: 2px; }
+  .summary-card.accent .card-unit { color: rgba(255,255,255,0.7); }
+  .card-label { font-size: 11px; font-weight: 500; color: var(--muted-fg); }
+  .summary-card.accent .card-label { color: rgba(255,255,255,0.8); }
+
+  /* CALENDAR */
+  .cal-card { background: var(--card); border-radius: 16px; border: 1px solid var(--border-solid); overflow: hidden; }
+  .cal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border-solid); }
+  .cal-title { font-size: 15px; font-weight: 600; color: var(--foreground); text-transform: capitalize; }
+  .cal-subtitle { font-size: 11px; color: var(--muted-fg); margin-top: 2px; }
+  .cal-nav { display: flex; align-items: center; gap: 6px; }
+  .nav-btn { width: 30px; height: 30px; border-radius: 8px; background: var(--muted); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted-fg); transition: background 0.12s, color 0.12s; }
+  .nav-btn:hover { background: var(--secondary); color: var(--primary); }
+  .nav-btn svg { width: 14px; height: 14px; }
+  .today-btn { padding: 0 12px; height: 30px; border-radius: 8px; background: var(--muted); border: none; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--muted-fg); transition: background 0.12s, color 0.12s; font-family: 'DM Sans', sans-serif; }
+  .today-btn:hover { background: var(--secondary); color: var(--primary); }
+
+  .day-headers { display: grid; grid-template-columns: 64px repeat(5, 1fr); border-bottom: 1px solid var(--border-solid); }
+  .day-headers .spacer { height: 56px; }
+  .day-col-header { height: 56px; border-left: 1px solid var(--border-solid); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .day-abbr { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted-fg); }
+  .day-num { font-size: 17px; font-weight: 600; color: var(--foreground); line-height: 1; }
+  .day-num.today { width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+
+  .time-grid { overflow-y: auto; max-height: 420px; }
+  .time-grid::-webkit-scrollbar { display: none; }
+  .time-row { display: grid; grid-template-columns: 64px repeat(5, 1fr); }
+  .hour-label { display: flex; align-items: flex-start; justify-content: flex-end; padding: 6px 10px 0 0; }
+  .hour-label span { font-size: 10px; font-family: monospace; color: var(--muted-fg); }
+  .day-cell { border-left: 1px solid var(--border-solid); border-top: 1px solid rgba(0,0,0,0.04); min-height: 72px; display: flex; flex-direction: column; }
+
+  /* SLOTS */
+  .slot { flex: 1; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; border-bottom: 1px solid rgba(0,0,0,0.04); cursor: pointer; border-left: none; border-right: none; border-top: none; background: transparent; transition: background 0.12s; text-align: left; min-height: 24px; font-family: 'DM Sans', sans-serif; }
+  .slot:last-child { border-bottom: none; }
+  .slot:hover:not(.slot--occupied):not(.slot--booked) { background: rgba(125,139,122,0.06); }
+  .slot--occupied { background: var(--occupied); cursor: not-allowed; }
+  .slot--booked { background: rgba(125,139,122,0.13); }
+  .slot--booked:hover { background: rgba(125,139,122,0.22); cursor: pointer; }
+  .slot-time { font-size: 9px; font-family: monospace; color: rgba(107,132,128,0.5); }
+  .slot--booked .slot-time { color: var(--primary); font-weight: 600; }
+  .slot--occupied .slot-time { color: #b0b0b0; }
+  .slot-right { display: flex; align-items: center; gap: 3px; }
+  .slot-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--primary); }
+  .slot-min { font-size: 9px; font-weight: 500; color: var(--primary); }
+  .slot-x { font-size: 9px; color: var(--primary); opacity: 0; transition: opacity 0.12s; }
+  .slot--booked:hover .slot-x { opacity: 1; }
+  .slot-occupied-label { font-size: 9px; font-weight: 500; color: #b5b5b5; }
+  .slot-coffee { font-size: 9px; opacity: 0; color: var(--muted-fg); transition: opacity 0.12s; }
+  .slot:hover:not(.slot--occupied):not(.slot--booked) .slot-coffee { opacity: 0.5; }
+
+  /* LEGEND */
+  .legend { display: flex; align-items: center; gap: 24px; padding: 4px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-box { width: 14px; height: 14px; border-radius: 4px; }
+  .legend-label { font-size: 11px; color: var(--muted-fg); }
+  .legend-total { margin-left: auto; font-size: 11px; color: var(--muted-fg); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    z-index: 100; display: flex; align-items: center; gap: 8px;
+    padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 500;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15); white-space: nowrap;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.added   { background: var(--primary); color: white; }
+  .toast.removed { background: var(--azul); color: white; }
+  .toast.warning { background: #c8773a; color: white; }
+  .toast svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  /* MODAL BASE */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(43,45,66,0.42); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.22s;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+  .modal-box {
+    background: white; border-radius: 20px; padding: 40px 44px;
+    text-align: center; max-width: 400px; width: 90%;
+    box-shadow: 0 24px 64px rgba(43,45,66,0.2);
+    transform: scale(0.92) translateY(14px);
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    position: relative;
+  }
+  .modal-overlay.show .modal-box { transform: scale(1) translateY(0); }
+  .modal-close { position: absolute; top: 16px; right: 16px; background: var(--muted); border: none; cursor: pointer; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--muted-fg); transition: background 0.12s; }
+  .modal-close:hover { background: var(--secondary); }
+  .modal-close svg { width: 13px; height: 13px; }
+  .modal-icon { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; }
+  .modal-icon.green { background: rgba(125,139,122,0.12); }
+  .modal-icon.red   { background: rgba(212,24,61,0.08); }
+  .modal-icon svg { width: 28px; height: 28px; }
+  .modal-title { font-size: 21px; font-weight: 700; color: var(--azul); letter-spacing: -0.02em; margin-bottom: 8px; }
+  .modal-sub { font-size: 14px; color: var(--muted-fg); line-height: 1.65; margin-bottom: 28px; }
+  .modal-sub strong { color: var(--primary); font-weight: 600; }
+  .modal-sub.danger-text strong { color: #d4183d; }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-btn { flex: 1; border: none; cursor: pointer; padding: 13px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; transition: opacity 0.15s; }
+  .modal-btn:hover { opacity: 0.86; }
+  .modal-btn.primary { background: var(--primary); color: white; }
+  .modal-btn.danger  { background: #d4183d; color: white; }
+  .modal-btn.ghost   { background: var(--muted); color: var(--foreground); }
+  .modal-btn.full    { width: 100%; }
+
+  /* CONFETTI */
+  .confetti-dot { position: absolute; width: 8px; height: 8px; border-radius: 50%; opacity: 0; pointer-events: none; }
+  @keyframes confettiFly {
+    0%   { opacity: 1; transform: translate(0,0) scale(1); }
+    100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.3); }
+  }
+
+  .menu-overlay { position: fixed; inset: 0; z-index: 20; display: none; }
+  .menu-overlay.active { display: block; }
+
+  /* CONFIG PANEL */
+  .config-overlay {
+    position: fixed; inset: 0; z-index: 150;
+    background: rgba(43,45,66,0.32); backdrop-filter: blur(3px);
+    opacity: 0; pointer-events: none; transition: opacity 0.22s;
+  }
+  .config-overlay.show { opacity: 1; pointer-events: all; }
+
+  .config-panel {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 360px;
+    background: var(--card); z-index: 160;
+    box-shadow: -12px 0 40px rgba(43,45,66,0.14);
+    display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  }
+  .config-panel.show { transform: translateX(0); }
+
+  .config-header {
+    padding: 20px 24px 16px; border-bottom: 1px solid var(--border-solid);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .config-header-left { display: flex; align-items: center; gap: 10px; }
+  .config-header-icon {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: var(--secondary); display: flex; align-items: center; justify-content: center;
+  }
+  .config-header-icon svg { width: 16px; height: 16px; color: var(--primary); }
+  .config-header-title { font-size: 15px; font-weight: 600; color: var(--foreground); letter-spacing: -0.01em; }
+  .config-header-sub { font-size: 11px; color: var(--muted-fg); margin-top: 1px; }
+  .config-close {
+    width: 30px; height: 30px; border-radius: 8px; background: var(--muted);
+    border: none; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; color: var(--muted-fg); transition: background 0.12s;
+  }
+  .config-close:hover { background: var(--secondary); color: var(--primary); }
+  .config-close svg { width: 12px; height: 12px; }
+
+  .config-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 24px; }
+  .config-body::-webkit-scrollbar { display: none; }
+
+  .config-section-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--muted-fg); margin-bottom: 10px;
+  }
+
+  /* EXPERIENCE CARDS */
+  .exp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .exp-card {
+    border: 2px solid var(--border-solid); border-radius: 12px;
+    padding: 12px 10px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    background: transparent; text-align: left; font-family: 'DM Sans', sans-serif;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .exp-card:hover { border-color: var(--primary); background: rgba(125,139,122,0.04); }
+  .exp-card.selected { border-color: var(--primary); background: rgba(125,139,122,0.08); }
+  .exp-card.selected .exp-name { color: var(--primary); }
+  .exp-emoji { font-size: 20px; line-height: 1; }
+  .exp-name { font-size: 12px; font-weight: 600; color: var(--foreground); }
+  .exp-desc { font-size: 10px; color: var(--muted-fg); line-height: 1.4; }
+  .exp-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+  .exp-tag {
+    font-size: 9px; font-weight: 500; padding: 2px 6px;
+    border-radius: 999px; background: var(--muted); color: var(--muted-fg);
+  }
+  .exp-card.selected .exp-tag { background: rgba(125,139,122,0.15); color: var(--primary); }
+
+  /* MANUAL CONFIG */
+  .manual-section { display: none; flex-direction: column; gap: 16px; }
+  .manual-section.show { display: flex; }
+
+  .config-row { display: flex; flex-direction: column; gap: 8px; }
+  .config-row-label { font-size: 12px; font-weight: 500; color: var(--foreground); display: flex; align-items: center; gap: 6px; }
+  .config-row-label svg { width: 12px; height: 12px; color: var(--muted-fg); }
+
+  /* Light options */
+  .light-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .light-btn {
+    border: 2px solid var(--border-solid); border-radius: 10px; padding: 8px 4px;
+    cursor: pointer; background: transparent; display: flex; flex-direction: column;
+    align-items: center; gap: 5px; transition: border-color 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .light-btn:hover { border-color: var(--primary); }
+  .light-btn.selected { border-color: var(--primary); background: rgba(125,139,122,0.06); }
+  .light-dot { width: 22px; height: 22px; border-radius: 50%; }
+  .light-label { font-size: 9px; color: var(--muted-fg); font-weight: 500; }
+  .light-btn.selected .light-label { color: var(--primary); }
+
+  /* Audio options */
+  .audio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .audio-btn {
+    border: 2px solid var(--border-solid); border-radius: 10px; padding: 9px 10px;
+    cursor: pointer; background: transparent; text-align: left;
+    font-family: 'DM Sans', sans-serif; transition: border-color 0.15s, background 0.15s;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .audio-btn:hover { border-color: var(--primary); background: rgba(125,139,122,0.04); }
+  .audio-btn.selected { border-color: var(--primary); background: rgba(125,139,122,0.08); }
+  .audio-icon { font-size: 14px; flex-shrink: 0; }
+  .audio-label { font-size: 11px; font-weight: 500; color: var(--foreground); }
+  .audio-btn.selected .audio-label { color: var(--primary); }
+
+  /* Divider */
+  .config-divider { height: 1px; background: var(--border-solid); margin: 0 -24px; }
+
+  /* Toggle for manual mode */
+  .manual-toggle-wrap {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border: 1px solid var(--border-solid);
+    border-radius: 10px; cursor: pointer; transition: background 0.12s;
+    background: transparent;
+  }
+  .manual-toggle-wrap:hover { background: var(--muted); }
+  .manual-toggle-left { display: flex; align-items: center; gap: 8px; }
+  .manual-toggle-left svg { width: 14px; height: 14px; color: var(--muted-fg); }
+  .manual-toggle-text { font-size: 12px; font-weight: 500; color: var(--foreground); }
+  .manual-toggle-sub { font-size: 10px; color: var(--muted-fg); margin-top: 1px; }
+  .toggle-pill {
+    width: 34px; height: 20px; border-radius: 999px; background: var(--muted);
+    position: relative; transition: background 0.2s; flex-shrink: 0;
+  }
+  .toggle-pill.on { background: var(--primary); }
+  .toggle-knob {
+    position: absolute; top: 3px; left: 3px; width: 14px; height: 14px;
+    border-radius: 50%; background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+  }
+  .toggle-pill.on .toggle-knob { transform: translateX(14px); }
+
+  /* Config footer */
+  .config-footer {
+    padding: 16px 24px 20px; border-top: 1px solid var(--border-solid);
+    display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
+  }
+  .config-preview {
+    padding: 10px 14px; border-radius: 10px; background: var(--secondary);
+    font-size: 12px; color: var(--primary); font-weight: 500;
+    display: flex; align-items: center; gap: 8px; min-height: 38px;
+  }
+  .config-preview svg { width: 13px; height: 13px; flex-shrink: 0; }
+  .config-save-btn {
+    width: 100%; padding: 12px; border-radius: 10px;
+    background: var(--primary); color: white; border: none;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: opacity 0.15s;
+  }
+  .config-save-btn:hover { opacity: 0.88; }
+
+  /* Config trigger button */
+  .config-trigger {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 8px;
+    background: var(--secondary); border: 1px solid var(--border-solid);
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 500; color: var(--primary);
+    transition: background 0.12s; white-space: nowrap;
+  }
+  .config-trigger:hover { background: var(--muted); }
+  .config-trigger svg { width: 13px; height: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <svg width="178" height="48" viewBox="0 0 178 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Outer organic ring: two leaf/arc shapes forming a circle -->
+      <!-- Left leaf arc -->
+      <path d="M18 8 C8 10, 4 18, 6 26 C8 34, 14 38, 20 36 C14 32, 11 26, 13 20 C15 14, 18 10, 18 8Z"
+            fill="#7D8B7A" opacity="0.55"/>
+      <!-- Right leaf arc -->
+      <path d="M24 8 C34 10, 38 18, 36 26 C34 34, 28 38, 22 36 C28 32, 31 26, 29 20 C27 14, 24 10, 24 8Z"
+            fill="#7D8B7A" opacity="0.55"/>
+      <!-- Top leaf arc -->
+      <path d="M8 20 C10 10, 18 6, 26 8 C34 10, 38 16, 36 22 C32 16, 26 13, 20 15 C14 17, 10 20, 8 20Z"
+            fill="#7D8B7A" opacity="0.45"/>
+      <!-- Bottom leaf arc -->
+      <path d="M8 26 C10 36, 18 40, 26 38 C34 36, 38 30, 36 24 C32 30, 26 33, 20 31 C14 29, 10 26, 8 26Z"
+            fill="#7D8B7A" opacity="0.45"/>
+      <!-- Center circle -->
+      <circle cx="21" cy="23" r="9" fill="#7D8B7A" opacity="0.15"/>
+      <circle cx="21" cy="23" r="9" stroke="#7D8B7A" stroke-width="1.2" fill="none"/>
+      <!-- Pause bars -->
+      <rect x="17.5" y="18" width="3" height="10" rx="1.5" fill="#7D8B7A"/>
+      <rect x="22.5" y="18" width="3" height="10" rx="1.5" fill="#7D8B7A"/>
+      <!-- PAUSELAB text -->
+      <text x="48" y="26" font-family="'DM Sans', sans-serif" font-size="15" font-weight="700"
+            letter-spacing="2" fill="#2B2D42">PAUSELAB</text>
+      <!-- Tagline -->
+      <text x="48" y="38" font-family="'DM Sans', sans-serif" font-size="8.5" font-weight="400"
+            letter-spacing="0.8" fill="#7D8B7A">Transformá el bienestar</text>
+    </svg>
+  </div>
+  <nav class="main-nav">
+    <button class="active">Calendario</button>
+    <button>Historial</button>
+    <button>Estadísticas</button>
+  </nav>
+  <div style="position:relative">
+    <button class="user-btn" id="userBtn" onclick="toggleMenu()">
+      <div class="avatar">CA</div>
+      <span class="user-name">Carlos Andrade</span>
+      <svg class="chevron" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="user-menu" id="userMenu">
+      <div class="user-menu-header">
+        <p>Carlos Andrade</p>
+        <span>c.andrade@empresa.com</span>
+      </div>
+      <button class="menu-item" onclick="closeMenu()">
+        <svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 12c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Mi perfil
+      </button>
+      <button class="menu-item" onclick="closeMenu()">
+        <svg viewBox="0 0 14 14" fill="none"><path d="M7 1.5a2 2 0 0 0-2 2v.5A3 3 0 0 0 2 7v.5l-1 1.5h12L12 7.5V7a3 3 0 0 0-3-3v-.5a2 2 0 0 0-2-2Z" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 11a1.5 1.5 0 0 0 3 0" stroke="currentColor" stroke-width="1.3"/></svg>
+        Notificaciones
+      </button>
+      <button class="menu-item" onclick="closeMenu()">
+        <svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Ajustes
+      </button>
+      <button class="menu-item danger" onclick="closeMenu()">
+        <svg viewBox="0 0 14 14" fill="none"><path d="M9 3H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M11 7H7m4 0-2-2m2 2-2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Cerrar sesión
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
+
+<main>
+  <div class="summary-grid" id="summaryGrid"></div>
+  <div class="cal-card">
+    <div class="cal-header">
+      <div>
+        <div class="cal-title" id="calTitle">—</div>
+        <div class="cal-subtitle">Hacé clic en un bloque disponible para agendar una pausa de 20 min</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="config-trigger" onclick="openConfig()">
+          <svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          Mi experiencia
+          <span id="configBadge" style="display:none;width:6px;height:6px;border-radius:50%;background:var(--primary);margin-left:2px;"></span>
+        </button>
+        <div class="cal-nav">
+          <button class="nav-btn" onclick="changeWeek(-1)"><svg viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="today-btn" onclick="goToday()">Hoy</button>
+          <button class="nav-btn" onclick="changeWeek(1)"><svg viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <div class="day-headers" id="dayHeaders"></div>
+    <div class="time-grid" id="timeGrid"></div>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-box" style="background:rgba(125,139,122,0.13);border:1px solid rgba(125,139,122,0.3)"></div><span class="legend-label">Pausa agendada</span></div>
+    <div class="legend-item"><div class="legend-box" style="background:#e8eeec;border:1px solid #dde5e3"></div><span class="legend-label">Disponible</span></div>
+    <div class="legend-item"><div class="legend-box" style="background:var(--occupied);border:1px solid #dde5e3"></div><span class="legend-label">Ocupado</span></div>
+    <div class="legend-total" id="legendTotal">cargando…</div>
+  </div>
+</main>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <svg id="toastIcon" viewBox="0 0 14 14" fill="none"></svg>
+  <span id="toastMsg"></span>
+</div>
+
+<!-- MODAL: PAUSA AGENDADA -->
+<div class="modal-overlay" id="modalConfirm" onclick="handleOverlay(event,'modalConfirm')">
+  <div class="modal-box" id="modalConfirmBox">
+    <button class="modal-close" onclick="closeModal('modalConfirm')"><svg viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+    <div class="modal-icon green">
+      <svg viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="12" stroke="#7D8B7A" stroke-width="1.8"/>
+        <circle cx="14" cy="14" r="8" stroke="#7D8B7A" stroke-width="1.2"/>
+        <rect x="11" y="8.5" width="2.5" height="11" rx="1.25" fill="#7D8B7A"/>
+        <rect x="14.5" y="8.5" width="2.5" height="11" rx="1.25" fill="#7D8B7A"/>
+      </svg>
+    </div>
+    <div class="modal-title">¡Pausa agendada! ⏸</div>
+    <div class="modal-sub" id="confirmSub">Tu pausa quedó confirmada.</div>
+    <div class="modal-actions"><button class="modal-btn primary full" onclick="closeModal('modalConfirm')">Perfecto, gracias</button></div>
+  </div>
+</div>
+
+<!-- MODAL: CANCELAR PAUSA -->
+<div class="modal-overlay" id="modalCancel" onclick="handleOverlay(event,'modalCancel')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modalCancel')"><svg viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+    <div class="modal-icon red">
+      <svg viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="12" stroke="#d4183d" stroke-width="1.8"/>
+        <path d="M9 9l10 10M19 9L9 19" stroke="#d4183d" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="modal-title">¿Cancelar esta pausa?</div>
+    <div class="modal-sub danger-text" id="cancelSub">Vas a liberar el turno. <strong>Esta acción no se puede deshacer.</strong></div>
+    <div class="modal-actions">
+      <button class="modal-btn ghost" onclick="closeModal('modalCancel')">No, mantenerla</button>
+      <button class="modal-btn danger" onclick="confirmCancel()">Sí, cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: PAUSA CONSECUTIVA -->
+<div class="modal-overlay" id="modalConsec" onclick="handleOverlay(event,'modalConsec')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modalConsec')"><svg viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+    <div class="modal-icon" style="background:rgba(200,119,58,0.1)">
+      <svg viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="12" stroke="#c8773a" stroke-width="1.8"/>
+        <path d="M14 8v7" stroke="#c8773a" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="14" cy="19.5" r="1.2" fill="#c8773a"/>
+      </svg>
+    </div>
+    <div class="modal-title" style="color:#c8773a">Pausas consecutivas</div>
+    <div class="modal-sub">No es posible agendar dos pausas seguidas en el mismo día. Dejá al menos un bloque de 20 min de distancia entre pausas.</div>
+    <div class="modal-actions"><button class="modal-btn full" style="background:#c8773a;color:white" onclick="closeModal('modalConsec')">Entendido</button></div>
+  </div>
+</div>
+
+<!-- CONFIG OVERLAY -->
+<div class="config-overlay" id="configOverlay" onclick="closeConfig()"></div>
+
+<!-- CONFIG PANEL -->
+<div class="config-panel" id="configPanel">
+  <div class="config-header">
+    <div class="config-header-left">
+      <div class="config-header-icon">
+        <svg viewBox="0 0 14 14" fill="none"><path d="M2 10V5a5 5 0 0 1 10 0v5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><rect x="1" y="9" width="3" height="4" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="10" y="9" width="3" height="4" rx="1" stroke="currentColor" stroke-width="1.3"/></svg>
+      </div>
+      <div>
+        <div class="config-header-title">Mi experiencia</div>
+        <div class="config-header-sub">Configurá cómo querés tu próxima pausa</div>
+      </div>
+    </div>
+    <button class="config-close" onclick="closeConfig()">
+      <svg viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <div class="config-body">
+
+    <!-- EXPERIENCIAS -->
+    <div>
+      <div class="config-section-title">Elegí una experiencia</div>
+      <div class="exp-grid" id="expGrid">
+        <button class="exp-card" data-exp="naturaleza" onclick="selectExp('naturaleza')">
+          <div class="exp-emoji">🌿</div>
+          <div class="exp-name">Naturaleza</div>
+          <div class="exp-desc">Bosque, río y sonidos del entorno natural</div>
+          <div class="exp-tags"><span class="exp-tag">Verde suave</span><span class="exp-tag">Ambient</span></div>
+        </button>
+        <button class="exp-card" data-exp="mar" onclick="selectExp('mar')">
+          <div class="exp-emoji">🌊</div>
+          <div class="exp-name">Mar</div>
+          <div class="exp-desc">Olas, brisa y horizonte abierto</div>
+          <div class="exp-tags"><span class="exp-tag">Azul profundo</span><span class="exp-tag">Olas</span></div>
+        </button>
+        <button class="exp-card" data-exp="meditacion" onclick="selectExp('meditacion')">
+          <div class="exp-emoji">☁️</div>
+          <div class="exp-name">Meditación guiada</div>
+          <div class="exp-desc">Voz guiada con música de fondo</div>
+          <div class="exp-tags"><span class="exp-tag">Blanco cálido</span><span class="exp-tag">Guiado</span></div>
+        </button>
+        <button class="exp-card" data-exp="silencio" onclick="selectExp('silencio')">
+          <div class="exp-emoji">🔇</div>
+          <div class="exp-name">Silencio total</div>
+          <div class="exp-desc">Sin audio, luz tenue, descanso puro</div>
+          <div class="exp-tags"><span class="exp-tag">Ámbar</span><span class="exp-tag">Sin audio</span></div>
+        </button>
+        <button class="exp-card" data-exp="energia" onclick="selectExp('energia')">
+          <div class="exp-emoji">✨</div>
+          <div class="exp-name">Energía</div>
+          <div class="exp-desc">Música instrumental para recargar el foco</div>
+          <div class="exp-tags"><span class="exp-tag">Blanco frío</span><span class="exp-tag">Instrumental</span></div>
+        </button>
+        <button class="exp-card" data-exp="manual" onclick="selectExp('manual')">
+          <div class="exp-emoji">⚙️</div>
+          <div class="exp-name">Personalizar</div>
+          <div class="exp-desc">Configurá luz y audio por separado</div>
+          <div class="exp-tags"><span class="exp-tag">A tu gusto</span></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- CONFIGURACION MANUAL (visible solo cuando seleccionan "Personalizar") -->
+    <div class="manual-section" id="manualSection">
+      <div class="config-divider"></div>
+
+      <!-- LUZ -->
+      <div class="config-row">
+        <div class="config-row-label">
+          <svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          Iluminación
+        </div>
+        <div class="light-grid" id="lightGrid">
+          <button class="light-btn" data-light="calido" onclick="selectLight('calido')">
+            <div class="light-dot" style="background:#FFD580;box-shadow:0 0 8px rgba(255,213,128,0.5)"></div>
+            <div class="light-label">Cálida</div>
+          </button>
+          <button class="light-btn" data-light="neutro" onclick="selectLight('neutro')">
+            <div class="light-dot" style="background:#F5F5F0;border:1px solid #ddd"></div>
+            <div class="light-label">Neutra</div>
+          </button>
+          <button class="light-btn" data-light="frio" onclick="selectLight('frio')">
+            <div class="light-dot" style="background:#B0D4F1;box-shadow:0 0 8px rgba(176,212,241,0.5)"></div>
+            <div class="light-label">Fría</div>
+          </button>
+          <button class="light-btn" data-light="verde" onclick="selectLight('verde')">
+            <div class="light-dot" style="background:#A8C5A0;box-shadow:0 0 8px rgba(168,197,160,0.4)"></div>
+            <div class="light-label">Verde</div>
+          </button>
+          <button class="light-btn" data-light="ambar" onclick="selectLight('ambar')">
+            <div class="light-dot" style="background:#E8A87C;box-shadow:0 0 8px rgba(232,168,124,0.4)"></div>
+            <div class="light-label">Ámbar</div>
+          </button>
+          <button class="light-btn" data-light="azul" onclick="selectLight('azul')">
+            <div class="light-dot" style="background:#7EB8D4;box-shadow:0 0 8px rgba(126,184,212,0.5)"></div>
+            <div class="light-label">Azul</div>
+          </button>
+          <button class="light-btn" data-light="violeta" onclick="selectLight('violeta')">
+            <div class="light-dot" style="background:#B8A0CC;box-shadow:0 0 8px rgba(184,160,204,0.4)"></div>
+            <div class="light-label">Violeta</div>
+          </button>
+          <button class="light-btn" data-light="minima" onclick="selectLight('minima')">
+            <div class="light-dot" style="background:#2a2a2a"></div>
+            <div class="light-label">Mínima</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- AUDIO -->
+      <div class="config-row">
+        <div class="config-row-label">
+          <svg viewBox="0 0 14 14" fill="none"><path d="M2 5h2l3-3v10L4 9H2V5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M10 4.5a3 3 0 0 1 0 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          Audio
+        </div>
+        <div class="audio-grid" id="audioGrid">
+          <button class="audio-btn" data-audio="bosque" onclick="selectAudio('bosque')">
+            <div class="audio-icon">🌲</div><div class="audio-label">Bosque</div>
+          </button>
+          <button class="audio-btn" data-audio="oceano" onclick="selectAudio('oceano')">
+            <div class="audio-icon">🌊</div><div class="audio-label">Océano</div>
+          </button>
+          <button class="audio-btn" data-audio="lluvia" onclick="selectAudio('lluvia')">
+            <div class="audio-icon">🌧️</div><div class="audio-label">Lluvia</div>
+          </button>
+          <button class="audio-btn" data-audio="instrumental" onclick="selectAudio('instrumental')">
+            <div class="audio-icon">🎹</div><div class="audio-label">Instrumental</div>
+          </button>
+          <button class="audio-btn" data-audio="meditacion" onclick="selectAudio('meditacion')">
+            <div class="audio-icon">🎙️</div><div class="audio-label">Meditación</div>
+          </button>
+          <button class="audio-btn" data-audio="silencio" onclick="selectAudio('silencio')">
+            <div class="audio-icon">🔇</div><div class="audio-label">Sin audio</div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-divider"></div>
+
+    <!-- TOGGLE: CONFIGURAR AL ENTRAR -->
+    <button class="manual-toggle-wrap" onclick="toggleConfigOnEntry()">
+      <div class="manual-toggle-left">
+        <svg viewBox="0 0 14 14" fill="none"><rect x="2" y="3" width="10" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 7h4M7 5v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <div>
+          <div class="manual-toggle-text">Configurar al entrar a la cabina</div>
+          <div class="manual-toggle-sub">La cabina quedará en modo neutro al llegar</div>
+        </div>
+      </div>
+      <div class="toggle-pill" id="togglePill"><div class="toggle-knob"></div></div>
+    </button>
+
+  </div>
+
+  <div class="config-footer">
+    <div class="config-preview" id="configPreview">
+      <svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span id="configPreviewText">Sin preferencias guardadas</span>
+    </div>
+    <button class="config-save-btn" onclick="saveConfig()">Guardar preferencias</button>
+  </div>
+</div>
+
+<script>
+  const WORK_HOURS = [8,9,10,11,12,13,14,15,16,17];
+  const DAYS_ABBR  = ['Lun','Mar','Mié','Jue','Vie'];
+  const DAY_NAMES  = ['Lunes','Martes','Miércoles','Jueves','Viernes'];
+
+  // ~60% occupied — generated deterministically
+  function buildOccupied() {
+    const set = new Set();
+    const seed = [
+      [0,8,0],[0,8,20],[0,9,0],[0,9,40],[0,11,20],[0,12,0],[0,12,40],
+      [0,13,20],[0,14,0],[0,15,0],[0,15,40],[0,16,20],[0,17,0],
+      [1,8,0],[1,8,40],[1,9,20],[1,10,0],[1,10,40],[1,11,20],
+      [1,12,0],[1,13,0],[1,13,40],[1,14,20],[1,15,0],[1,16,0],[1,16,40],
+      [2,8,20],[2,9,0],[2,9,40],[2,10,20],[2,11,0],[2,12,20],
+      [2,13,0],[2,14,0],[2,15,20],[2,16,0],[2,16,40],[2,17,0],
+      [3,8,0],[3,8,40],[3,9,20],[3,10,0],[3,11,0],[3,11,40],
+      [3,12,20],[3,13,0],[3,14,20],[3,15,0],[3,15,40],[3,16,20],
+      [4,8,0],[4,8,20],[4,9,0],[4,9,40],[4,10,20],[4,11,0],
+      [4,12,0],[4,12,40],[4,13,20],[4,14,0],[4,15,0],[4,16,20],[4,17,0],
+    ];
+    seed.forEach(([d,h,m]) => set.add(`${d}-${h}-${m}`));
+    return set;
+  }
+  const OCCUPIED = buildOccupied();
+
+  const INITIAL_BOOKED = new Set(['0-10,0','2-14,20','4-11,40']
+    .map(k => k.replace(',','-'))
+    // re-key correctly
+  );
+  // Clear and re-add properly
+  const initBooked = new Set();
+  // make sure initial booked slots are not occupied
+  [[0,10,0],[2,14,20],[4,11,40]].forEach(([d,h,m]) => {
+    const k = `${d}-${h}-${m}`;
+    if (!OCCUPIED.has(k)) initBooked.add(k);
+  });
+
+  let booked = new Set(initBooked);
+  let weekOffset = 0;
+  let toastTimer = null;
+  let pendingCancelKey = null;
+
+  /* ── HELPERS ── */
+  function slotKey(d,h,m) { return `${d}-${h}-${m}`; }
+
+  function isConsecutive(day, hour, min) {
+    // check if any adjacent slot (±20min) on same day is already booked
+    const slots = [[hour, min-20],[hour, min+20]];
+    // handle minute overflow
+    const normalized = slots.map(([h2,m2]) => {
+      if (m2 < 0)  return [h2-1, 40];
+      if (m2 >= 60) return [h2+1, 0];
+      return [h2, m2];
+    });
+    return normalized.some(([h2,m2]) => {
+      if (h2 < 8 || h2 > 17) return false;
+      if (m2 !== 0 && m2 !== 20 && m2 !== 40) return false;
+      return booked.has(slotKey(day, h2, m2));
+    });
+  }
+
+  /* ── SLOT CLICK ── */
+  function handleSlotClick(day, hour, min) {
+    const key = slotKey(day, hour, min);
+    if (booked.has(key)) {
+      // ask for confirmation before cancelling
+      pendingCancelKey = key;
+      const timeStr = `${hour}:${min === 0 ? '00' : min}`;
+      document.getElementById('cancelSub').innerHTML =
+        `Vas a cancelar la pausa del <strong>${DAY_NAMES[day]} a las ${timeStr}</strong>. Esta acción no se puede deshacer.`;
+      openModal('modalCancel');
+    } else {
+      // check consecutive
+      if (isConsecutive(day, hour, min)) {
+        openModal('modalConsec');
+        return;
+      }
+      booked.add(key);
+      const timeStr = `${hour}:${min === 0 ? '00' : min}`;
+      document.getElementById('confirmSub').innerHTML =
+        `Tu pausa del <strong>${DAY_NAMES[day]} a las ${timeStr}</strong> quedó confirmada.<br>La cabina te va a esperar. Merecés el descanso. ⏸`;
+      openModal('modalConfirm');
+      spawnConfetti('modalConfirmBox');
+      renderCalendar();
+    }
+  }
+
+  function confirmCancel() {
+    if (pendingCancelKey) {
+      booked.delete(pendingCancelKey);
+      pendingCancelKey = null;
+      closeModal('modalCancel');
+      showToast('Pausa cancelada', 'removed');
+      renderCalendar();
+    }
+  }
+
+  /* ── MODALS ── */
+  function openModal(id)  { document.getElementById(id).classList.add('show'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+  function handleOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+
+  /* ── TOAST ── */
+  const TOAST_ICONS = {
+    added:   '<path d="M2 7l3.5 3.5L12 3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+    removed: '<path d="M3 3l8 8M11 3l-8 8" stroke="white" stroke-width="1.5" stroke-linecap="round"/>',
+    warning: '<path d="M7 4v5M7 11v1.5" stroke="white" stroke-width="1.8" stroke-linecap="round"/>',
+  };
+  function showToast(msg, type='added') {
+    const t = document.getElementById('toast');
+    document.getElementById('toastIcon').innerHTML = TOAST_ICONS[type] || TOAST_ICONS.added;
+    document.getElementById('toastMsg').textContent = msg;
+    t.className = `toast ${type}`;
+    requestAnimationFrame(() => t.classList.add('show'));
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  /* ── CONFETTI ── */
+  function spawnConfetti(boxId) {
+    const box = document.getElementById(boxId);
+    const colors = ['#7D8B7A','#B9C6B9','#2B2D42','#BCCCDC','#C4983A','#dff0ed'];
+    for (let i = 0; i < 18; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'confetti-dot';
+      const angle = (i / 18) * 360;
+      const dist  = 70 + Math.random() * 70;
+      const tx = Math.cos(angle * Math.PI/180) * dist + 'px';
+      const ty = (Math.sin(angle * Math.PI/180) * dist - 20) + 'px';
+      dot.style.cssText = `background:${colors[i%colors.length]};left:calc(50% - 4px);top:calc(50% - 4px);--tx:${tx};--ty:${ty};animation:confettiFly 0.75s ease-out ${i*28}ms forwards;`;
+      box.appendChild(dot);
+      setTimeout(() => dot.remove(), 1000 + i*28);
+    }
+  }
+
+  /* ── RENDER ── */
+  function getWeekDates(offset) {
+    const now = new Date();
+    const mon = new Date(now);
+    mon.setDate(now.getDate() - ((now.getDay()+6)%7) + offset*7);
+    return Array.from({length:5}, (_,i) => { const d = new Date(mon); d.setDate(mon.getDate()+i); return d; });
+  }
+  function formatMonthYear(dates) { return dates[0].toLocaleDateString('es-ES',{month:'long',year:'numeric'}); }
+
+  function renderCalendar() {
+    const dates = getWeekDates(weekOffset);
+    document.getElementById('calTitle').textContent = formatMonthYear(dates);
+
+    // day headers
+    const dh = document.getElementById('dayHeaders');
+    dh.innerHTML = '<div class="spacer"></div>';
+    dates.forEach((d,i) => {
+      const isToday = weekOffset===0 && d.toDateString()===new Date().toDateString();
+      dh.innerHTML += `<div class="day-col-header">
+        <span class="day-abbr">${DAYS_ABBR[i]}</span>
+        <span class="day-num ${isToday?'today':''}">${d.getDate()}</span>
+      </div>`;
+    });
+
+    // time grid
+    const tg = document.getElementById('timeGrid');
+    tg.innerHTML = '';
+    WORK_HOURS.forEach(hour => {
+      const row = document.createElement('div');
+      row.className = 'time-row';
+      row.innerHTML = `<div class="hour-label"><span>${hour}:00</span></div>`;
+      [0,1,2,3,4].forEach(day => {
+        const cell = document.createElement('div');
+        cell.className = 'day-cell';
+        [0,20,40].forEach(min => {
+          const key = slotKey(day,hour,min);
+          const isBooked   = booked.has(key);
+          const isOccupied = !isBooked && OCCUPIED.has(key);
+          const timeStr    = `${hour}:${min===0?'00':min}`;
+          if (isOccupied) {
+            const el = document.createElement('div');
+            el.className = 'slot slot--occupied';
+            el.innerHTML = `<span class="slot-time">${timeStr}</span><span class="slot-occupied-label">Ocupado</span>`;
+            cell.appendChild(el);
+          } else {
+            const el = document.createElement('button');
+            el.className = 'slot' + (isBooked?' slot--booked':'');
+            el.innerHTML = `<span class="slot-time">${timeStr}</span>` + (isBooked
+              ? `<div class="slot-right"><div class="slot-dot"></div><span class="slot-min">20 min</span><span class="slot-x">✕</span></div>`
+              : `<span class="slot-coffee">☕</span>`);
+            el.addEventListener('click', () => handleSlotClick(day,hour,min));
+            cell.appendChild(el);
+          }
+        });
+        row.appendChild(cell);
+      });
+      tg.appendChild(row);
+    });
+
+    updateSummary();
+  }
+
+  function updateSummary() {
+    const total = booked.size;
+    const mins  = total * 20;
+    document.getElementById('legendTotal').textContent =
+      `${total} pausa${total!==1?'s':''} · ${mins} min esta semana`;
+
+    const icons = {
+      clock:  '<svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M7 4v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+      coffee: '<svg viewBox="0 0 14 14" fill="none"><path d="M3 3h6v5a3 3 0 0 1-6 0V3Z" stroke="currentColor" stroke-width="1.3"/><path d="M9 5h1a1.5 1.5 0 0 1 0 3H9" stroke="currentColor" stroke-width="1.3"/><path d="M2 12h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+      bell:   '<svg viewBox="0 0 14 14" fill="none"><path d="M7 1.5a2 2 0 0 0-2 2v.5A3 3 0 0 0 2 7v.5l-1 1.5h12L12 7.5V7a3 3 0 0 0-3-3v-.5a2 2 0 0 0-2-2Z" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 11a1.5 1.5 0 0 0 3 0" stroke="currentColor" stroke-width="1.3"/></svg>',
+      check:  '<svg viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    };
+    const cards = [
+      { label:'Próxima pausa',     value: total>0 ? 'Hoy 14:20' : '—', unit:'Cabina confirmada', accent:true,  icon:'clock' },
+      { label:'Pausas esta semana',value: total,   unit:'pausas',       accent:true,  icon:'coffee' },
+      { label:'Tiempo de descanso',value: mins,    unit:'min',          accent:false, icon:'clock' },
+      { label:'Promedio diario',   value: (mins/5).toFixed(0), unit:'min/día', accent:false, icon:'bell' },
+      { label:'Racha actual',      value: 4,       unit:'días',         accent:false, icon:'check' },
+    ];
+    document.getElementById('summaryGrid').innerHTML = cards.map(c => `
+      <div class="summary-card ${c.accent?'accent':''}">
+        <div class="card-icon">${icons[c.icon]}</div>
+        <div><div class="card-value">${c.value}</div><div class="card-unit">${c.unit}</div></div>
+        <div class="card-label">${c.label}</div>
+      </div>`).join('');
+  }
+
+  function changeWeek(dir) { weekOffset += dir; renderCalendar(); }
+  function goToday()       { weekOffset = 0;    renderCalendar(); }
+
+  /* ── CONFIG PANEL ── */
+  const EXP_CONFIG = {
+    naturaleza: { light: 'verde',   audio: 'bosque',       label: '🌿 Naturaleza — luz verde, sonidos de bosque' },
+    mar:        { light: 'azul',    audio: 'oceano',       label: '🌊 Mar — luz azul, sonido de olas' },
+    meditacion: { light: 'calido',  audio: 'meditacion',   label: '☁️ Meditación — luz cálida, voz guiada' },
+    silencio:   { light: 'minima',  audio: 'silencio',     label: '🔇 Silencio total — luz mínima, sin audio' },
+    energia:    { light: 'frio',    audio: 'instrumental', label: '✨ Energía — luz fría, instrumental' },
+    manual:     { light: null,      audio: null,           label: null },
+  };
+
+  let configState = {
+    exp: null,
+    light: null,
+    audio: null,
+    configOnEntry: false,
+  };
+
+  // saved = persisted, state = in-progress
+  let savedConfig = { ...configState };
+
+  function openConfig() {
+    // restore saved state to panel
+    configState = { ...savedConfig };
+    syncPanelToState();
+    document.getElementById('configPanel').classList.add('show');
+    document.getElementById('configOverlay').classList.add('show');
+  }
+
+  function closeConfig() {
+    document.getElementById('configPanel').classList.remove('show');
+    document.getElementById('configOverlay').classList.remove('show');
+  }
+
+  function syncPanelToState() {
+    // exp cards
+    document.querySelectorAll('.exp-card').forEach(c => {
+      c.classList.toggle('selected', c.dataset.exp === configState.exp);
+    });
+    // manual section
+    const isManual = configState.exp === 'manual';
+    document.getElementById('manualSection').classList.toggle('show', isManual);
+    // light
+    document.querySelectorAll('.light-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.light === configState.light);
+    });
+    // audio
+    document.querySelectorAll('.audio-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.audio === configState.audio);
+    });
+    // toggle
+    document.getElementById('togglePill').classList.toggle('on', configState.configOnEntry);
+    updatePreview();
+  }
+
+  function selectExp(exp) {
+    configState.exp = exp;
+    if (exp !== 'manual') {
+      const cfg = EXP_CONFIG[exp];
+      configState.light = cfg.light;
+      configState.audio = cfg.audio;
+      configState.configOnEntry = false;
+    }
+    syncPanelToState();
+  }
+
+  function selectLight(light) {
+    configState.light = light;
+    document.querySelectorAll('.light-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.light === light);
+    });
+    updatePreview();
+  }
+
+  function selectAudio(audio) {
+    configState.audio = audio;
+    document.querySelectorAll('.audio-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.audio === audio);
+    });
+    updatePreview();
+  }
+
+  function toggleConfigOnEntry() {
+    configState.configOnEntry = !configState.configOnEntry;
+    if (configState.configOnEntry) {
+      configState.exp = null;
+      configState.light = null;
+      configState.audio = null;
+    }
+    syncPanelToState();
+  }
+
+  function updatePreview() {
+    const el = document.getElementById('configPreviewText');
+    if (configState.configOnEntry) {
+      el.textContent = '⚙️  La cabina esperará tu elección al entrar';
+      return;
+    }
+    if (configState.exp && configState.exp !== 'manual') {
+      el.textContent = EXP_CONFIG[configState.exp].label;
+      return;
+    }
+    if (configState.light || configState.audio) {
+      const parts = [];
+      if (configState.light) parts.push('Luz: ' + configState.light);
+      if (configState.audio) parts.push('Audio: ' + configState.audio);
+      el.textContent = '⚙️  ' + parts.join(' · ');
+      return;
+    }
+    el.textContent = 'Sin preferencias guardadas';
+  }
+
+  function saveConfig() {
+    savedConfig = { ...configState };
+    // show badge on trigger button
+    const hasConfig = savedConfig.exp || savedConfig.configOnEntry;
+    document.getElementById('configBadge').style.display = hasConfig ? 'inline-block' : 'none';
+    closeConfig();
+    showToast('Preferencias guardadas', 'added');
+  }
+
+  function toggleMenu() {
+    document.getElementById('userBtn').classList.toggle('open');
+    document.getElementById('userMenu').classList.toggle('open');
+    document.getElementById('menuOverlay').classList.toggle('active');
+  }
+  function closeMenu() {
+    document.getElementById('userBtn').classList.remove('open');
+    document.getElementById('userMenu').classList.remove('open');
+    document.getElementById('menuOverlay').classList.remove('active');
+  }
+
+  renderCalendar();
+</script>
+</body>
+</html>

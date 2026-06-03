@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PauseLab — Dashboard RRHH</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f4f7f6;
+    --card: #ffffff;
+    --primary: #7D8B7A;
+    --primary-light: #B9C6B9;
+    --primary-dark: #5a6b58;
+    --azul: #2B2D42;
+    --border: #e2e8f0;
+    --muted: #e8eeec;
+    --muted-fg: #64748b;
+    --fg: #2d3748;
+    --green: #22c55e;
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --blue: #3b82f6;
+    --purple: #a78bfa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size:16px; }
+  body { min-height:100vh; background:var(--bg); color:var(--fg); font-family:'DM Sans',sans-serif; -webkit-font-smoothing:antialiased; }
+
+  /* NAV */
+  nav { background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:40; }
+  .nav-inner { max-width:1400px; margin:0 auto; padding:0 24px; height:64px; display:flex; align-items:center; justify-content:space-between; }
+  .nav-right { display:flex; align-items:center; gap:12px; }
+  .badge-anon { display:flex; align-items:center; gap:6px; background:#e0f2f1; padding:6px 12px; border-radius:999px; font-size:12px; font-weight:500; color:#3a9e8f; }
+  .user-chip { display:flex; align-items:center; gap:10px; background:var(--muted); padding:8px 14px; border-radius:14px; }
+  .avatar { width:34px; height:34px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; flex-shrink:0; }
+  .user-info p { font-size:13px; font-weight:600; color:var(--fg); line-height:1.2; }
+  .user-info span { font-size:11px; color:var(--muted-fg); }
+
+  /* GEAR BTN */
+  .gear-btn { width:38px; height:38px; border-radius:10px; background:var(--muted); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--muted-fg); transition:background 0.15s, color 0.15s, transform 0.3s; }
+  .gear-btn:hover { background:var(--primary-light); color:var(--primary-dark); }
+  .gear-btn.spinning svg { animation:spin 0.5s ease; }
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(180deg)} }
+
+  /* MAIN */
+  main { max-width:1400px; margin:0 auto; padding:32px 24px; }
+
+  /* PAGE HEADER */
+  .page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px; gap:16px; flex-wrap:wrap; }
+  .page-header h2 { font-size:22px; font-weight:700; color:var(--azul); letter-spacing:-0.02em; margin-bottom:4px; }
+  .page-header p { font-size:13px; color:var(--muted-fg); }
+  .filters { display:flex; gap:10px; }
+
+  /* FILTER DROPDOWNS */
+  .dropdown { position:relative; }
+  .dropdown-btn { display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--border); padding:8px 16px; border-radius:10px; font-size:13px; font-weight:500; color:var(--fg); cursor:pointer; font-family:'DM Sans',sans-serif; transition:background 0.12s; white-space:nowrap; }
+  .dropdown-btn:hover { background:var(--muted); }
+  .dropdown-btn svg { width:14px; height:14px; color:var(--muted-fg); transition:transform 0.2s; }
+  .dropdown-btn.open svg { transform:rotate(180deg); }
+  .dropdown-menu { position:absolute; top:calc(100% + 6px); right:0; background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.1); overflow:hidden; z-index:30; min-width:180px; opacity:0; transform:translateY(-6px); pointer-events:none; transition:opacity 0.15s, transform 0.15s; }
+  .dropdown-menu.open { opacity:1; transform:translateY(0); pointer-events:all; }
+  .dropdown-item { width:100%; display:block; text-align:left; padding:9px 16px; font-size:13px; color:var(--fg); background:transparent; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; transition:background 0.1s; }
+  .dropdown-item:hover { background:var(--muted); }
+  .dropdown-item.active { color:var(--primary); font-weight:600; background:#e0f7f4; }
+
+  /* ALERT BANNER */
+  .alert-banner { background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:12px 18px; display:flex; align-items:center; gap:10px; margin-bottom:20px; font-size:13px; color:#92400e; }
+  .alert-banner svg { width:16px; height:16px; flex-shrink:0; color:#f59e0b; }
+  .alert-banner strong { font-weight:600; }
+  .alert-banner.hidden { display:none; }
+
+  /* SUMMARY CARDS */
+  .summary-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:24px; }
+  .scard { background:var(--card); border-radius:14px; padding:20px; border:1px solid var(--border); }
+  .scard-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:14px; }
+  .scard-icon svg { width:18px; height:18px; }
+  .scard-icon.teal   { background:#e0f2f1; color:#3a9e8f; }
+  .scard-icon.blue   { background:#dbeafe; color:#3b82f6; }
+  .scard-icon.green  { background:#dcfce7; color:#16a34a; }
+  .scard-icon.amber  { background:#fef3c7; color:#d97706; }
+  .scard-icon.yellow { background:#fefce8; color:#ca8a04; }
+  .scard-label { font-size:12px; font-weight:500; color:var(--muted-fg); margin-bottom:6px; }
+  .scard-value { font-size:28px; font-weight:700; color:var(--azul); line-height:1; margin-bottom:4px; letter-spacing:-0.02em; }
+  .scard-sub { font-size:11px; color:var(--muted-fg); }
+  .scard-trend { display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:600; margin-top:4px; }
+  .scard-trend.up { color:#16a34a; }
+  .scard-trend.down { color:#dc2626; }
+
+  /* QUOTA ALERT inside card */
+  .quota-pill { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px; font-size:10px; font-weight:600; margin-top:6px; }
+  .quota-pill.ok     { background:#dcfce7; color:#15803d; }
+  .quota-pill.warn   { background:#fef3c7; color:#b45309; }
+  .quota-pill.danger { background:#fee2e2; color:#dc2626; }
+
+  /* CHARTS ROW */
+  .charts-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  .chart-card { background:var(--card); border-radius:14px; border:1px solid var(--border); padding:22px; }
+  .chart-card h3 { font-size:14px; font-weight:600; color:var(--azul); margin-bottom:4px; }
+  .chart-card p { font-size:12px; color:var(--muted-fg); margin-bottom:18px; }
+  .chart-wrap { position:relative; height:260px; }
+
+  /* FULL WIDTH CARD */
+  .full-card { background:var(--card); border-radius:14px; border:1px solid var(--border); padding:22px; margin-bottom:16px; }
+  .full-card h3 { font-size:14px; font-weight:600; color:var(--azul); margin-bottom:4px; }
+  .full-card p { font-size:12px; color:var(--muted-fg); margin-bottom:18px; }
+
+  /* BOTTOM ROW */
+  .bottom-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+
+  /* SATISFACTION BARS */
+  .sat-score { display:flex; align-items:flex-end; gap:10px; margin-bottom:20px; }
+  .sat-big { font-size:48px; font-weight:700; color:var(--azul); letter-spacing:-0.03em; line-height:1; }
+  .sat-denom { font-size:22px; font-weight:600; color:var(--muted-fg); margin-bottom:6px; }
+  .sat-trend { display:flex; align-items:center; gap:4px; color:#16a34a; font-size:13px; font-weight:600; margin-bottom:6px; }
+  .sat-bars { display:flex; flex-direction:column; gap:10px; }
+  .sat-row { display:flex; align-items:center; gap:10px; }
+  .sat-emoji { font-size:16px; width:24px; text-align:center; }
+  .sat-bar-bg { flex:1; height:10px; background:var(--muted); border-radius:999px; overflow:hidden; }
+  .sat-bar-fill { height:100%; border-radius:999px; }
+  .sat-pct { font-size:12px; font-weight:500; color:var(--fg); min-width:32px; text-align:right; }
+
+  /* REUSE */
+  .reuse-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+  .reuse-item p.label { font-size:12px; color:var(--muted-fg); margin-bottom:6px; font-weight:500; }
+  .reuse-item .big { font-size:36px; font-weight:700; color:var(--azul); letter-spacing:-0.02em; }
+  .reuse-item .sub { font-size:11px; color:var(--muted-fg); margin-top:2px; }
+  .reuse-bar { display:flex; height:32px; border-radius:10px; overflow:hidden; margin-bottom:10px; }
+  .reuse-bar-seg { display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; color:white; }
+  .reuse-legend { display:flex; justify-content:space-between; }
+  .reuse-legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted-fg); }
+  .reuse-legend-dot { width:10px; height:10px; border-radius:3px; }
+
+  /* TABLE */
+  .table-card { background:var(--card); border-radius:14px; border:1px solid var(--border); overflow:hidden; margin-bottom:16px; }
+  .table-header { padding:18px 22px; border-bottom:1px solid var(--border); }
+  .table-header h3 { font-size:14px; font-weight:600; color:var(--azul); }
+  .table-header p { font-size:12px; color:var(--muted-fg); }
+  table { width:100%; border-collapse:collapse; }
+  thead tr { background:rgba(125,139,122,0.06); border-bottom:1px solid var(--border); }
+  th { text-align:left; padding:11px 22px; font-size:12px; font-weight:600; color:var(--fg); white-space:nowrap; }
+  td { padding:13px 22px; font-size:13px; color:var(--fg); border-bottom:1px solid var(--border); }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:rgba(125,139,122,0.03); }
+  .team-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .progress-cell { display:flex; align-items:center; gap:8px; }
+  .progress-bar { flex:1; max-width:90px; height:6px; background:var(--muted); border-radius:999px; overflow:hidden; }
+  .progress-fill { height:100%; background:var(--primary); border-radius:999px; }
+  .trend-up   { display:inline-flex; align-items:center; gap:4px; color:#16a34a; font-size:12px; font-weight:600; }
+  .trend-down { display:inline-flex; align-items:center; gap:4px; color:#dc2626; font-size:12px; font-weight:600; }
+
+  /* QUOTA COLUMN */
+  .quota-cell { font-size:12px; }
+  .quota-ok   { color:#16a34a; font-weight:500; }
+  .quota-warn { color:#d97706; font-weight:600; }
+
+  /* FOOTER */
+  .footer-note { text-align:center; padding:24px 0 8px; font-size:11px; color:var(--muted-fg); }
+
+  /* ── SETTINGS PANEL ── */
+  .panel-overlay { position:fixed; inset:0; z-index:60; background:rgba(43,45,66,0.35); backdrop-filter:blur(3px); opacity:0; pointer-events:none; transition:opacity 0.25s; }
+  .panel-overlay.open { opacity:1; pointer-events:all; }
+
+  .settings-panel { position:fixed; top:0; right:0; bottom:0; width:400px; background:var(--card); z-index:61; box-shadow:-20px 0 60px rgba(43,45,66,0.15); transform:translateX(100%); transition:transform 0.3s cubic-bezier(0.4,0,0.2,1); display:flex; flex-direction:column; overflow:hidden; }
+  .settings-panel.open { transform:translateX(0); }
+
+  .panel-head { padding:24px 24px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+  .panel-head-left h3 { font-size:16px; font-weight:700; color:var(--azul); letter-spacing:-0.01em; }
+  .panel-head-left p { font-size:12px; color:var(--muted-fg); margin-top:2px; }
+  .panel-close { width:32px; height:32px; border-radius:8px; background:var(--muted); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--muted-fg); transition:background 0.12s; }
+  .panel-close:hover { background:#fce8e8; color:#dc2626; }
+  .panel-close svg { width:14px; height:14px; }
+
+  .panel-body { flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:24px; }
+  .panel-body::-webkit-scrollbar { display:none; }
+
+  .panel-section { }
+  .panel-section-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:var(--muted-fg); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+  .panel-section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  .cabina-selector { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .cab-btn { padding:7px 16px; border-radius:8px; border:1.5px solid var(--border); background:transparent; font-size:13px; font-weight:500; color:var(--fg); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
+  .cab-btn:hover { border-color:var(--primary); color:var(--primary); }
+  .cab-btn.active { background:var(--primary); color:white; border-color:var(--primary); }
+
+  .setting-row { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+  .setting-label { display:flex; align-items:center; justify-content:space-between; }
+  .setting-label span { font-size:13px; font-weight:500; color:var(--fg); }
+  .setting-label .setting-val { font-size:15px; font-weight:700; color:var(--primary); min-width:32px; text-align:right; }
+  .setting-desc { font-size:11px; color:var(--muted-fg); line-height:1.5; }
+
+  .slider-wrap { position:relative; padding:4px 0; }
+  input[type=range] { width:100%; height:4px; border-radius:999px; appearance:none; outline:none; cursor:pointer; background:var(--muted); }
+  input[type=range]::-webkit-slider-thumb { appearance:none; width:18px; height:18px; border-radius:50%; background:var(--primary); border:2px solid white; box-shadow:0 1px 4px rgba(0,0,0,0.18); cursor:pointer; transition:transform 0.12s; }
+  input[type=range]::-webkit-slider-thumb:hover { transform:scale(1.15); }
+  input[type=range]::-webkit-slider-runnable-track { border-radius:999px; }
+
+  .slider-ticks { display:flex; justify-content:space-between; margin-top:4px; }
+  .slider-ticks span { font-size:10px; color:var(--muted-fg); }
+
+  .panel-info-box { background:rgba(125,139,122,0.08); border:1px solid rgba(125,139,122,0.2); border-radius:10px; padding:12px 14px; font-size:12px; color:var(--muted-fg); line-height:1.6; }
+  .panel-info-box strong { color:var(--primary); }
+
+  .panel-foot { padding:16px 24px; border-top:1px solid var(--border); flex-shrink:0; display:flex; gap:10px; }
+  .btn-save { flex:1; background:var(--primary); color:white; border:none; border-radius:10px; padding:13px; font-size:14px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; transition:opacity 0.15s; }
+  .btn-save:hover { opacity:0.86; }
+  .btn-cancel-panel { background:var(--muted); color:var(--fg); border:none; border-radius:10px; padding:13px 20px; font-size:14px; font-weight:500; font-family:'DM Sans',sans-serif; cursor:pointer; transition:background 0.15s; }
+  .btn-cancel-panel:hover { background:#e2e8f0; }
+
+
+  /* ── INSIGHTS ACCIONABLES ── */
+  .insights-section { margin-bottom:16px; }
+  .insights-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .insights-header-left { display:flex; align-items:center; gap:10px; }
+  .insights-header-left h3 { font-size:15px; font-weight:700; color:var(--azul); letter-spacing:-0.01em; }
+  .insights-badge { background:var(--primary-light); color:var(--primary-dark); font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; }
+  .insights-subtitle { font-size:12px; color:var(--muted-fg); margin-top:1px; }
+  .insights-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+
+  .insight-card {
+    background:var(--card); border-radius:14px; border:1px solid var(--border);
+    padding:20px 22px; display:flex; flex-direction:column; gap:12px;
+    position:relative; overflow:hidden; transition:box-shadow 0.2s;
+  }
+  .insight-card:hover { box-shadow:0 6px 24px rgba(43,45,66,0.08); }
+
+  /* left accent bar */
+  .insight-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px 0 0 3px; }
+  .insight-card.severity-high::before   { background:#ef4444; }
+  .insight-card.severity-medium::before { background:var(--amber); }
+  .insight-card.severity-low::before    { background:var(--primary); }
+
+  .insight-top { display:flex; align-items:flex-start; gap:12px; }
+  .insight-icon { width:38px; height:38px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .insight-icon.red    { background:#fee2e2; }
+  .insight-icon.amber  { background:#fef3c7; }
+  .insight-icon.green  { background:rgba(125,139,122,0.12); }
+  .insight-icon.blue   { background:#dbeafe; }
+
+  .insight-meta { flex:1; }
+  .insight-tag { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:5px; }
+  .insight-tag.red   { color:#dc2626; }
+  .insight-tag.amber { color:#b45309; }
+  .insight-tag.green { color:var(--primary); }
+  .insight-tag.blue  { color:#2563eb; }
+
+  .insight-title { font-size:14px; font-weight:700; color:var(--azul); line-height:1.3; margin-bottom:4px; letter-spacing:-0.01em; }
+  .insight-desc  { font-size:12px; color:var(--muted-fg); line-height:1.6; }
+  .insight-desc strong { color:var(--fg); font-weight:600; }
+
+  .insight-bottom { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-top:10px; border-top:1px solid var(--border); }
+  .insight-action { font-size:12px; color:var(--primary-dark); font-weight:600; display:flex; align-items:center; gap:5px; }
+  .insight-action svg { width:12px; height:12px; }
+  .insight-action-btn {
+    padding:6px 14px; border-radius:7px; font-size:12px; font-weight:600;
+    border:1.5px solid var(--border); background:transparent; color:var(--fg);
+    cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s;
+    white-space:nowrap; flex-shrink:0;
+  }
+  .insight-action-btn:hover { border-color:var(--primary); color:var(--primary); background:rgba(125,139,122,0.06); }
+  .insight-action-btn.primary { background:var(--primary); color:white; border-color:var(--primary); }
+  .insight-action-btn.primary:hover { opacity:0.88; }
+
+  .insight-sparkline { display:flex; align-items:flex-end; gap:2px; height:28px; margin-top:2px; }
+  .spark-bar { width:6px; border-radius:2px; background:var(--muted); }
+  .spark-bar.fill { background:var(--primary); }
+  .spark-bar.fill.down { background:#ef4444; }
+  .spark-bar.fill.amber { background:var(--amber); }
+
+  .insight-stat-row { display:flex; gap:16px; }
+  .insight-stat { }
+  .insight-stat-val { font-size:18px; font-weight:700; color:var(--azul); line-height:1; letter-spacing:-0.02em; }
+  .insight-stat-val.red   { color:#dc2626; }
+  .insight-stat-val.amber { color:#b45309; }
+  .insight-stat-label { font-size:10px; color:var(--muted-fg); margin-top:2px; }
+
+  /* Dismissed state */
+  .insight-card.dismissed { opacity:0.4; pointer-events:none; }
+  .dismiss-btn { background:transparent; border:none; cursor:pointer; color:var(--muted-fg); padding:0; display:flex; align-items:center; transition:color 0.12s; flex-shrink:0; }
+  .dismiss-btn:hover { color:var(--fg); }
+  .dismiss-btn svg { width:13px; height:13px; }
+
+  /* TOAST */
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(16px); z-index:100; display:flex; align-items:center; gap:8px; padding:12px 20px; border-radius:12px; font-size:13px; font-weight:500; box-shadow:0 8px 24px rgba(0,0,0,0.14); opacity:0; pointer-events:none; transition:opacity 0.25s, transform 0.25s; white-space:nowrap; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  .toast.success { background:var(--primary); color:white; }
+  .toast svg { width:14px; height:14px; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <div><svg width="178" height="48" viewBox="0 0 178 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M18 8 C8 10, 4 18, 6 26 C8 34, 14 38, 20 36 C14 32, 11 26, 13 20 C15 14, 18 10, 18 8Z" fill="#7D8B7A" opacity="0.55"/>
+      <path d="M24 8 C34 10, 38 18, 36 26 C34 34, 28 38, 22 36 C28 32, 31 26, 29 20 C27 14, 24 10, 24 8Z" fill="#7D8B7A" opacity="0.55"/>
+      <path d="M8 20 C10 10, 18 6, 26 8 C34 10, 38 16, 36 22 C32 16, 26 13, 20 15 C14 17, 10 20, 8 20Z" fill="#7D8B7A" opacity="0.45"/>
+      <path d="M8 26 C10 36, 18 40, 26 38 C34 36, 38 30, 36 24 C32 30, 26 33, 20 31 C14 29, 10 26, 8 26Z" fill="#7D8B7A" opacity="0.45"/>
+      <circle cx="21" cy="23" r="9" fill="#7D8B7A" opacity="0.12"/>
+      <circle cx="21" cy="23" r="9" stroke="#7D8B7A" stroke-width="1.2" fill="none"/>
+      <rect x="17.5" y="18" width="3" height="10" rx="1.5" fill="#7D8B7A"/>
+      <rect x="22.5" y="18" width="3" height="10" rx="1.5" fill="#7D8B7A"/>
+      <text x="48" y="26" font-family="DM Sans, sans-serif" font-size="15" font-weight="700" letter-spacing="2" fill="#2B2D42">PAUSELAB</text>
+      <text x="48" y="38" font-family="DM Sans, sans-serif" font-size="8.5" font-weight="400" letter-spacing="0.8" fill="#7D8B7A">Transformá el bienestar</text>
+    </svg></div>
+    <div class="nav-right">
+      <div class="badge-anon">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a2.5 2.5 0 0 1 2.5 2.5v1H4.5V4A2.5 2.5 0 0 1 7 1.5Z" stroke="currentColor" stroke-width="1.3"/><rect x="2.5" y="5" width="9" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="7" cy="8.5" r="1" fill="currentColor"/></svg>
+        Datos anonimizados
+      </div>
+      <div class="user-chip">
+        <div class="avatar">AM</div>
+        <div class="user-info">
+          <p>Ana Martínez</p>
+          <span>RRHH · Administrador</span>
+        </div>
+      </div>
+      <button class="gear-btn" id="gearBtn" onclick="openPanel()" title="Configuración">
+        <svg width="17" height="17" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M9 1.5v1.8M9 14.7v1.8M1.5 9h1.8M14.7 9h1.8M3.6 3.6l1.27 1.27M13.13 13.13l1.27 1.27M14.4 3.6l-1.27 1.27M4.87 13.13l-1.27 1.27" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div>
+      <h2>Dashboard de Pausas Laborales</h2>
+      <p id="pageSubtitle">Datos agregados por equipo · Semana actual</p>
+    </div>
+    <div class="filters">
+      <div class="dropdown">
+        <button class="dropdown-btn" id="periodBtn" onclick="toggleDropdown('period')">
+          <span id="periodLabel">Semana actual</span>
+          <svg viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="dropdown-menu" id="periodMenu">
+          <button class="dropdown-item active" onclick="selectPeriod('week','Semana actual')">Semana actual</button>
+          <button class="dropdown-item" onclick="selectPeriod('month','Mes actual')">Mes actual</button>
+          <button class="dropdown-item" onclick="selectPeriod('quarter','Trimestre')">Trimestre</button>
+        </div>
+      </div>
+      <div class="dropdown">
+        <button class="dropdown-btn" id="sectorBtn" onclick="toggleDropdown('sector')">
+          <span id="sectorLabel">Todos los sectores</span>
+          <svg viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="dropdown-menu" id="sectorMenu">
+          <button class="dropdown-item active" onclick="selectSector('all','Todos los sectores')">Todos los sectores</button>
+          <button class="dropdown-item" onclick="selectSector('Tecnología','Tecnología')">Tecnología</button>
+          <button class="dropdown-item" onclick="selectSector('Ventas','Ventas')">Ventas</button>
+          <button class="dropdown-item" onclick="selectSector('Operaciones','Operaciones')">Operaciones</button>
+          <button class="dropdown-item" onclick="selectSector('Marketing','Marketing')">Marketing</button>
+          <button class="dropdown-item" onclick="selectSector('Legal','Legal')">Legal</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUOTA ALERT BANNER -->
+  <div class="alert-banner hidden" id="alertBanner">
+    <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v4M8 10.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <span id="alertText"><strong>Ventas</strong> está cerca del límite semanal de pausas por persona (4 de 5 usadas). Considerá ajustar los cupos en Configuración.</span>
+  </div>
+
+  <!-- SUMMARY CARDS -->
+  <div class="summary-grid" id="summaryGrid"></div>
+
+  <!-- CHARTS ROW -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Pausas por equipo</h3>
+      <p>Semana actual</p>
+      <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Tendencia de pausas (8 semanas)</h3>
+      <p>Por equipo</p>
+      <div class="chart-wrap"><canvas id="lineChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- HOURLY CHART -->
+  <div class="full-card">
+    <h3>Horarios pico de uso</h3>
+    <p>Pausas por franja horaria — semana actual</p>
+    <div class="chart-wrap"><canvas id="hourlyChart"></canvas></div>
+  </div>
+
+  <!-- BOTTOM ROW -->
+  <div class="bottom-row">
+    <!-- SATISFACTION -->
+    <div class="chart-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <h3 style="margin:0">Satisfacción post-sesión</h3>
+        <span style="background:#f3e8ff;color:#7c3aed;font-size:10px;font-weight:600;padding:2px 8px;border-radius:99px">Autorreportado</span>
+      </div>
+      <p style="margin-bottom:16px">Encuesta de 5 puntos al finalizar cada pausa</p>
+      <div class="sat-score">
+        <span class="sat-big">4.3</span>
+        <span class="sat-denom">/ 5</span>
+        <span class="sat-trend">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10l4-4 3 3 4-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          +0.2
+        </span>
+      </div>
+      <div class="sat-bars">
+        <div class="sat-row"><span class="sat-emoji">😊</span><div class="sat-bar-bg"><div class="sat-bar-fill" style="width:45%;background:#22c55e"></div></div><span class="sat-pct">45%</span></div>
+        <div class="sat-row"><span class="sat-emoji">🙂</span><div class="sat-bar-bg"><div class="sat-bar-fill" style="width:32%;background:#84cc16"></div></div><span class="sat-pct">32%</span></div>
+        <div class="sat-row"><span class="sat-emoji">😐</span><div class="sat-bar-bg"><div class="sat-bar-fill" style="width:15%;background:#eab308"></div></div><span class="sat-pct">15%</span></div>
+        <div class="sat-row"><span class="sat-emoji">🙁</span><div class="sat-bar-bg"><div class="sat-bar-fill" style="width:6%;background:#f97316"></div></div><span class="sat-pct">6%</span></div>
+        <div class="sat-row"><span class="sat-emoji">😞</span><div class="sat-bar-bg"><div class="sat-bar-fill" style="width:2%;background:#ef4444"></div></div><span class="sat-pct">2%</span></div>
+      </div>
+    </div>
+
+    <!-- REUSE -->
+    <div class="chart-card">
+      <h3>Tasa de reuso</h3>
+      <p>Usuarios recurrentes y frecuencia de uso</p>
+      <div class="reuse-grid">
+        <div class="reuse-item">
+          <p class="label">Usuarios que repitieron</p>
+          <div class="big">73%</div>
+          <div class="sub">Del total del período</div>
+        </div>
+        <div class="reuse-item">
+          <p class="label">Promedio de sesiones</p>
+          <div class="big">3.2</div>
+          <div class="sub">Por usuario en el período</div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:16px">
+        <p style="font-size:12px;font-weight:600;color:var(--fg);margin-bottom:10px">Distribución de usuarios</p>
+        <div class="reuse-bar">
+          <div class="reuse-bar-seg" style="width:27%;background:#3b82f6">27%</div>
+          <div class="reuse-bar-seg" style="width:73%;background:var(--primary)">73%</div>
+        </div>
+        <div class="reuse-legend">
+          <div class="reuse-legend-item"><div class="reuse-legend-dot" style="background:#3b82f6"></div>Primera vez</div>
+          <div class="reuse-legend-item"><div class="reuse-legend-dot" style="background:var(--primary)"></div>Recurrentes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-card">
+    <div class="table-header">
+      <h3>Detalle por equipo</h3>
+      <p>Métricas semanales agregadas · Cupos según configuración activa</p>
+    </div>
+    <table id="teamsTable">
+      <thead>
+        <tr>
+          <th>Equipo</th>
+          <th>Pausas/semana</th>
+          <th>Minutos/semana</th>
+          <th>Tasa de uso</th>
+          <th>NPS promedio</th>
+          <th>Uso vs. cupo</th>
+          <th>Tendencia</th>
+        </tr>
+      </thead>
+      <tbody id="teamsBody"></tbody>
+    </table>
+  </div>
+
+
+  <!-- INSIGHTS ACCIONABLES -->
+  <div class="insights-section">
+    <div class="insights-header">
+      <div class="insights-header-left">
+        <h3>Insights accionables</h3>
+        <span class="insights-badge" id="insightsBadge">4 detectados</span>
+      </div>
+      <div class="insights-subtitle">Patrones identificados automáticamente · Actualizados al guardar configuración</div>
+    </div>
+    <div class="insights-grid" id="insightsGrid">
+
+      <!-- INSIGHT 1: Caída tendencia -->
+      <div class="insight-card severity-high" id="icard-trend_drop">
+        <div class="insight-top">
+          <div class="insight-icon red">📉</div>
+          <div class="insight-meta">
+            <div class="insight-tag red">Tendencia · Uso</div>
+            <div class="insight-title">Tecnología en caída sostenida desde S5</div>
+            <div class="insight-desc">El equipo de <strong>Tecnología</strong> bajó el uso de pausas un <strong>18% en 3 semanas</strong>. Una caída sostenida puede indicar sobrecarga operativa, falta de visibilidad del beneficio o pérdida del hábito.</div>
+          </div>
+          <button class="dismiss-btn" onclick="dismissInsight('trend_drop')" title="Descartar">
+            <svg viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+          <div class="insight-stat-row">
+            <div class="insight-stat">
+              <div class="insight-stat-val red">−18%</div>
+              <div class="insight-stat-label">Últimas 3 semanas</div>
+            </div>
+            <div class="insight-stat">
+              <div class="insight-stat-val">S5→S8</div>
+              <div class="insight-stat-label">Período afectado</div>
+            </div>
+          </div>
+          <div class="insight-sparkline">
+            <div class="spark-bar fill" style="height:90%"></div>
+            <div class="spark-bar fill" style="height:88%"></div>
+            <div class="spark-bar fill" style="height:85%"></div>
+            <div class="spark-bar fill" style="height:85%"></div>
+            <div class="spark-bar fill down" style="height:75%"></div>
+            <div class="spark-bar fill down" style="height:65%"></div>
+            <div class="spark-bar fill down" style="height:55%"></div>
+            <div class="spark-bar fill down" style="height:50%"></div>
+          </div>
+        </div>
+        <div class="insight-bottom">
+          <div class="insight-action">
+            <svg viewBox="0 0 12 12" fill="none"><path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Acción sugerida: Enviar comunicación interna
+          </div>
+          <button class="insight-action-btn primary" onclick="showToast('Acción registrada — funcionalidad en desarrollo')">Tomar acción</button>
+        </div>
+      </div>
+
+      <!-- INSIGHT 2: Concentración horaria -->
+      <div class="insight-card severity-medium" id="icard-peak_concentration">
+        <div class="insight-top">
+          <div class="insight-icon amber">⏱️</div>
+          <div class="insight-meta">
+            <div class="insight-tag amber">Distribución · Horario</div>
+            <div class="insight-title">El 68% de las pausas se concentran en 2 franjas</div>
+            <div class="insight-desc">Entre las <strong>11:00 y 14:00 hs</strong> se registra el 68% del uso semanal. La cabina queda ociosa gran parte de la tarde. Redistribuir el uso mejoraría la cobertura sin aumentar el cupo.</div>
+          </div>
+          <button class="dismiss-btn" onclick="dismissInsight('peak_concentration')" title="Descartar">
+            <svg viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+          <div class="insight-stat-row">
+            <div class="insight-stat">
+              <div class="insight-stat-val amber">68%</div>
+              <div class="insight-stat-label">Uso en 2 franjas</div>
+            </div>
+            <div class="insight-stat">
+              <div class="insight-stat-val">32%</div>
+              <div class="insight-stat-label">Uso resto del día</div>
+            </div>
+          </div>
+          <div class="insight-sparkline">
+            <div class="spark-bar fill" style="height:15%"></div>
+            <div class="spark-bar fill" style="height:25%"></div>
+            <div class="spark-bar fill" style="height:40%"></div>
+            <div class="spark-bar fill amber" style="height:100%"></div>
+            <div class="spark-bar fill amber" style="height:88%"></div>
+            <div class="spark-bar fill" style="height:35%"></div>
+            <div class="spark-bar fill amber" style="height:90%"></div>
+            <div class="spark-bar fill" style="height:70%"></div>
+            <div class="spark-bar fill" style="height:55%"></div>
+            <div class="spark-bar fill" style="height:30%"></div>
+            <div class="spark-bar fill" style="height:20%"></div>
+          </div>
+        </div>
+        <div class="insight-bottom">
+          <div class="insight-action">
+            <svg viewBox="0 0 12 12" fill="none"><path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Acción sugerida: Revisar política de horarios
+          </div>
+          <button class="insight-action-btn" onclick="showToast('Acción registrada — funcionalidad en desarrollo')">Ver detalle</button>
+        </div>
+      </div>
+
+      <!-- INSIGHT 3: Cupo saturado -->
+      <div class="insight-card severity-high" id="icard-quota_saturation">
+        <div class="insight-top">
+          <div class="insight-icon red">🔴</div>
+          <div class="insight-meta">
+            <div class="insight-tag red">Cupos · Demanda</div>
+            <div class="insight-title">Ventas agota el cupo semanal antes del jueves</div>
+            <div class="insight-desc"><strong>Ventas</strong> está en el <strong>91% del cupo semanal</strong> y aún quedan 2 días hábiles. Con la demanda actual, el cupo se agota antes del cierre semanal de forma consistente.</div>
+          </div>
+          <button class="dismiss-btn" onclick="dismissInsight('quota_saturation')" title="Descartar">
+            <svg viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+          <div class="insight-stat-row">
+            <div class="insight-stat">
+              <div class="insight-stat-val red">91%</div>
+              <div class="insight-stat-label">Cupo consumido</div>
+            </div>
+            <div class="insight-stat">
+              <div class="insight-stat-val">Mar.</div>
+              <div class="insight-stat-label">Día est. de agotamiento</div>
+            </div>
+          </div>
+          <div class="insight-sparkline">
+            <div class="spark-bar fill" style="height:45%"></div>
+            <div class="spark-bar fill" style="height:55%"></div>
+            <div class="spark-bar fill" style="height:55%"></div>
+            <div class="spark-bar fill" style="height:70%"></div>
+            <div class="spark-bar fill down" style="height:72%"></div>
+            <div class="spark-bar fill down" style="height:82%"></div>
+            <div class="spark-bar fill down" style="height:90%"></div>
+            <div class="spark-bar fill down" style="height:95%"></div>
+          </div>
+        </div>
+        <div class="insight-bottom">
+          <div class="insight-action">
+            <svg viewBox="0 0 12 12" fill="none"><path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Acción sugerida: Ajustar cupos en Configuración
+          </div>
+          <button class="insight-action-btn primary" onclick="openPanel()">Ajustar cupos</button>
+        </div>
+      </div>
+
+      <!-- INSIGHT 4: NPS bajo -->
+      <div class="insight-card severity-medium" id="icard-low_nps">
+        <div class="insight-top">
+          <div class="insight-icon amber">⭐</div>
+          <div class="insight-meta">
+            <div class="insight-tag amber">Satisfacción · NPS</div>
+            <div class="insight-title">Ventas tiene el NPS más bajo del dashboard</div>
+            <div class="insight-desc">El equipo de <strong>Ventas</strong> reporta un NPS promedio de <strong>3.9/5</strong>, por debajo del promedio general de 4.2. Puede indicar fricción en el proceso de reserva o expectativas no alineadas.</div>
+          </div>
+          <button class="dismiss-btn" onclick="dismissInsight('low_nps')" title="Descartar">
+            <svg viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+          <div class="insight-stat-row">
+            <div class="insight-stat">
+              <div class="insight-stat-val amber">3.9</div>
+              <div class="insight-stat-label">NPS Ventas</div>
+            </div>
+            <div class="insight-stat">
+              <div class="insight-stat-val">4.2</div>
+              <div class="insight-stat-label">Promedio general</div>
+            </div>
+          </div>
+          <div class="insight-sparkline">
+            <div class="spark-bar fill" style="height:80%"></div>
+            <div class="spark-bar fill" style="height:80%"></div>
+            <div class="spark-bar fill" style="height:100%"></div>
+            <div class="spark-bar fill" style="height:80%"></div>
+            <div class="spark-bar fill amber" style="height:80%"></div>
+            <div class="spark-bar fill amber" style="height:60%"></div>
+            <div class="spark-bar fill amber" style="height:80%"></div>
+            <div class="spark-bar fill amber" style="height:78%"></div>
+          </div>
+        </div>
+        <div class="insight-bottom">
+          <div class="insight-action">
+            <svg viewBox="0 0 12 12" fill="none"><path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Acción sugerida: Ver detalle de satisfacción
+          </div>
+          <button class="insight-action-btn" onclick="showToast('Acción registrada — funcionalidad en desarrollo')">Ver detalle</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Los datos mostrados son agregados y anonimizados. No se almacenan ni muestran datos personales individuales.
+  </div>
+</main>
+
+<!-- SETTINGS PANEL OVERLAY -->
+<div class="panel-overlay" id="panelOverlay" onclick="closePanel()"></div>
+
+<!-- SETTINGS PANEL -->
+<div class="settings-panel" id="settingsPanel">
+  <div class="panel-head">
+    <div class="panel-head-left">
+      <h3>Configuración de cupos</h3>
+      <p>Límites de uso por persona</p>
+    </div>
+    <button class="panel-close" onclick="closePanel()">
+      <svg viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <div class="panel-body">
+    <!-- CABINA SELECTOR -->
+    <div class="panel-section">
+      <div class="panel-section-title">Cabina</div>
+      <div class="cabina-selector" id="cabinaSelector">
+        <button class="cab-btn active" onclick="selectCabina(this,'Cabina 1')">Cabina 1</button>
+        <button class="cab-btn" onclick="selectCabina(this,'Cabina 2')">Cabina 2</button>
+        <button class="cab-btn" onclick="selectCabina(this,'Todas')">Todas</button>
+      </div>
+      <div class="panel-info-box">
+        Configurando: <strong id="cabinaLabel">Cabina 1</strong>. Los límites se aplican por persona en esa cabina. Si seleccionás "Todas", el cambio aplica a todas las cabinas simultáneamente.
+      </div>
+    </div>
+
+    <!-- LIMITE DIARIO -->
+    <div class="panel-section">
+      <div class="panel-section-title">Límites de uso</div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Pausas por persona por día</span>
+          <span class="setting-val" id="valDia">2</span>
+        </div>
+        <div class="setting-desc">Máximo de pausas que un colaborador puede agendar en un mismo día.</div>
+        <div class="slider-wrap">
+          <input type="range" min="1" max="6" value="2" id="sliderDia" oninput="updateSlider('Dia')">
+        </div>
+        <div class="slider-ticks">
+          <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Pausas por persona por semana</span>
+          <span class="setting-val" id="valSemana">5</span>
+        </div>
+        <div class="setting-desc">Cupo semanal total por colaborador. Cuando se agota, el calendario bloquea la selección.</div>
+        <div class="slider-wrap">
+          <input type="range" min="1" max="15" value="5" id="sliderSemana" oninput="updateSlider('Semana')">
+        </div>
+        <div class="slider-ticks">
+          <span>1</span><span>5</span><span>10</span><span>15</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Mínimo entre pausas consecutivas</span>
+          <span class="setting-val" id="valConsec">1 <span style="font-size:11px;font-weight:400;color:var(--muted-fg)">bloque</span></span>
+        </div>
+        <div class="setting-desc">Bloques de 20 min que deben separar dos pausas del mismo usuario en el mismo día.</div>
+        <div class="slider-wrap">
+          <input type="range" min="1" max="4" value="1" id="sliderConsec" oninput="updateSlider('Consec')">
+        </div>
+        <div class="slider-ticks">
+          <span>20 min</span><span>40 min</span><span>60 min</span><span>80 min</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALERTA -->
+    <div class="panel-section">
+      <div class="panel-section-title">Alertas automáticas</div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Alertar cuando se usa el</span>
+          <span class="setting-val" id="valAlerta">80<span style="font-size:11px;font-weight:400;color:var(--muted-fg)">%</span></span>
+        </div>
+        <div class="setting-desc">Porcentaje del cupo semanal a partir del cual aparece la alerta en el dashboard.</div>
+        <div class="slider-wrap">
+          <input type="range" min="50" max="95" step="5" value="80" id="sliderAlerta" oninput="updateSlider('Alerta')">
+        </div>
+        <div class="slider-ticks">
+          <span>50%</span><span>65%</span><span>80%</span><span>95%</span>
+        </div>
+      </div>
+      <div class="panel-info-box" id="previewBox">
+        Con la configuración actual: un colaborador puede hacer hasta <strong id="previewDia">2</strong> pausas por día, <strong id="previewSemana">5</strong> por semana, con al menos <strong id="previewConsec">20 min</strong> entre pausas consecutivas. La alerta se activa al llegar al <strong id="previewAlerta">80%</strong> del cupo.
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-foot">
+    <button class="btn-cancel-panel" onclick="closePanel()">Cancelar</button>
+    <button class="btn-save" onclick="saveConfig()">Guardar cambios</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <svg viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span id="toastMsg">Configuración guardada</span>
+</div>
+
+<script>
+const weeklyData = [
+  {team:'Tecnología', pausas:87, minutos:1740, adherencia:92, nps:4.4, uso:78},
+  {team:'Ventas',     pausas:64, minutos:1280, adherencia:85, nps:3.9, uso:91},
+  {team:'Operaciones',pausas:72, minutos:1440, adherencia:88, nps:4.1, uso:65},
+  {team:'Marketing',  pausas:51, minutos:1020, adherencia:78, nps:4.6, uso:55},
+  {team:'Legal',      pausas:38, minutos:760,  adherencia:90, nps:4.3, uso:40},
+];
+const trendData = [
+  {s:'S1',Tecnología:82,Ventas:58,Operaciones:68,Marketing:45,Legal:35},
+  {s:'S2',Tecnología:79,Ventas:61,Operaciones:71,Marketing:48,Legal:33},
+  {s:'S3',Tecnología:85,Ventas:59,Operaciones:69,Marketing:47,Legal:36},
+  {s:'S4',Tecnología:83,Ventas:62,Operaciones:73,Marketing:49,Legal:37},
+  {s:'S5',Tecnología:88,Ventas:60,Operaciones:70,Marketing:50,Legal:38},
+  {s:'S6',Tecnología:86,Ventas:63,Operaciones:71,Marketing:48,Legal:39},
+  {s:'S7',Tecnología:89,Ventas:65,Operaciones:74,Marketing:52,Legal:37},
+  {s:'S8',Tecnología:87,Ventas:64,Operaciones:72,Marketing:51,Legal:38},
+];
+const hourlyData = [
+  {h:'8:00',p:12},{h:'9:00',p:28},{h:'10:00',p:35},{h:'11:00',p:62},
+  {h:'12:00',p:41},{h:'13:00',p:19},{h:'14:00',p:58},{h:'15:00',p:44},
+  {h:'16:00',p:37},{h:'17:00',p:55},{h:'18:00',p:22}
+];
+const teamColors = {
+  Tecnología:'#3a9e8f', Ventas:'#4ade80',
+  Operaciones:'#60a5fa', Marketing:'#a78bfa', Legal:'#f472b6'
+};
+
+// CONFIG STATE
+let config = { dia:2, semana:5, consec:1, alerta:80 };
+let alertThreshold = 80;
+
+
+// ── INSIGHTS ENGINE ──
+const INSIGHTS = [
+  {
+    id: 'trend_drop',
+    severity: 'high',
+    icon: '📉', iconClass: 'red',
+    tag: 'Tendencia · Uso', tagClass: 'red',
+    title: 'Tecnología en caída sostenida desde S5',
+    desc: 'El equipo de <strong>Tecnología</strong> bajó el uso de pausas un <strong>18% en 3 semanas</strong>. Una caída sostenida puede indicar sobrecarga operativa, falta de visibilidad del beneficio o pérdida del hábito.',
+    action: 'Enviar comunicación interna',
+    actionType: 'primary',
+    stat1val: '−18%', stat1label: 'Últimas 3 semanas', stat1class: 'red',
+    stat2val: 'S5→S8', stat2label: 'Período afectado',
+    sparks: [8,8,7,7,6,5,4,4], sparkClass: 'down',
+    condition: () => true
+  },
+  {
+    id: 'peak_concentration',
+    severity: 'medium',
+    icon: '⏱️', iconClass: 'amber',
+    tag: 'Distribución · Horario', tagClass: 'amber',
+    title: 'El 68% de las pausas se concentran en 2 franjas',
+    desc: 'Entre las <strong>11:00 y 14:00 hs</strong> se registra el 68% del uso semanal. La cabina queda ociosa gran parte de la tarde. Redistribuir el uso mejoraría la cobertura sin aumentar el cupo.',
+    action: 'Revisar política de horarios',
+    actionType: 'default',
+    stat1val: '68%', stat1label: 'Uso en 2 franjas', stat1class: 'amber',
+    stat2val: '32%', stat2label: 'Uso resto del día',
+    sparks: [1,2,3,8,7,3,7,6,5,3,2], sparkClass: 'amber',
+    condition: () => true
+  },
+  {
+    id: 'quota_saturation',
+    severity: 'high',
+    icon: '🔴', iconClass: 'red',
+    tag: 'Cupos · Demanda', tagClass: 'red',
+    title: 'Ventas agota el cupo semanal antes del jueves',
+    desc: '<strong>Ventas</strong> está en el <strong>91% del cupo semanal</strong> y aún quedan 2 días hábiles. Con la demanda actual, el cupo se agota antes del cierre semanal de forma consistente.',
+    action: 'Ajustar cupos en Configuración',
+    actionType: 'primary',
+    stat1val: '91%', stat1label: 'Cupo consumido', stat1class: 'red',
+    stat2val: 'Mar.', stat2label: 'Día estimado de agotamiento',
+    sparks: [4,5,5,7,7,8,9,9], sparkClass: 'down',
+    condition: () => true
+  },
+  {
+    id: 'low_nps_team',
+    severity: 'medium',
+    icon: '⭐', iconClass: 'amber',
+    tag: 'Satisfacción · NPS', tagClass: 'amber',
+    title: 'Ventas tiene el NPS más bajo del dashboard',
+    desc: 'El equipo de <strong>Ventas</strong> reporta un NPS promedio de <strong>3.9/5</strong>, por debajo del promedio general de 4.2. Puede indicar fricción en el proceso de reserva o expectativas no alineadas.',
+    action: 'Ver detalle de satisfacción',
+    actionType: 'default',
+    stat1val: '3.9', stat1label: 'NPS Ventas', stat1class: 'amber',
+    stat2val: '4.2', stat2label: 'Promedio general',
+    sparks: [4,4,5,4,4,3,4,4], sparkClass: 'amber',
+    condition: () => true
+  }
+];
+
+function renderInsights() {
+  const grid = document.getElementById('insightsGrid');
+  const visible = INSIGHTS.filter(i => i.condition());
+  document.getElementById('insightsBadge').textContent = visible.length + ' detectados';
+
+  grid.innerHTML = visible.map(ins => {
+    const sparks = ins.sparks.map((v,i) => {
+      const maxV = Math.max(...ins.sparks);
+      const h = Math.round((v/maxV)*100);
+      const last3 = i >= ins.sparks.length - 3;
+      return `<div class="spark-bar fill ${last3 ? ins.sparkClass : ''}" style="height:${h}%"></div>`;
+    }).join('');
+
+    return `<div class="insight-card severity-${ins.severity}" id="icard-${ins.id}">
+      <div class="insight-top">
+        <div class="insight-icon ${ins.iconClass}">${ins.icon}</div>
+        <div class="insight-meta">
+          <div class="insight-tag ${ins.tagClass}">${ins.tag}</div>
+          <div class="insight-title">${ins.title}</div>
+          <div class="insight-desc">${ins.desc}</div>
+        </div>
+        <button class="dismiss-btn" onclick="dismissInsight('${ins.id}')" title="Descartar">
+          <svg viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+        <div class="insight-stat-row">
+          <div class="insight-stat">
+            <div class="insight-stat-val ${ins.stat1class}">${ins.stat1val}</div>
+            <div class="insight-stat-label">${ins.stat1label}</div>
+          </div>
+          <div class="insight-stat">
+            <div class="insight-stat-val">${ins.stat2val}</div>
+            <div class="insight-stat-label">${ins.stat2label}</div>
+          </div>
+        </div>
+        <div class="insight-sparkline">${sparks}</div>
+      </div>
+      <div class="insight-bottom">
+        <div class="insight-action">
+          <svg viewBox="0 0 12 12" fill="none"><path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Acción sugerida: ${ins.action}
+        </div>
+        <button class="insight-action-btn ${ins.actionType === 'primary' ? 'primary' : ''}"
+          onclick="handleInsightAction('${ins.id}')">
+          ${ins.action}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function dismissInsight(id) {
+  const card = document.getElementById('icard-'+id);
+  card.style.transition = 'opacity 0.3s, transform 0.3s';
+  card.style.opacity = '0';
+  card.style.transform = 'translateY(-6px)';
+  setTimeout(() => {
+    card.style.display = 'none';
+    const remaining = document.querySelectorAll('.insight-card:not([style*="display: none"])').length;
+    document.getElementById('insightsBadge').textContent = remaining + ' detectados';
+  }, 300);
+}
+
+function handleInsightAction(id) {
+  if(id === 'quota_saturation') {
+    openPanel();
+  } else {
+    showToast('Acción registrada — funcionalidad en desarrollo');
+  }
+}
+
+// CHARTS
+let barChartInst, lineChartInst, hourlyChartInst;
+
+function initCharts() {
+  const gridColor = '#e2e8f0';
+  const tickStyle = { color:'#64748b', font:{size:11,family:'DM Sans'} };
+
+  // BAR
+  const barCtx = document.getElementById('barChart').getContext('2d');
+  barChartInst = new Chart(barCtx, {
+    type:'bar',
+    data:{
+      labels: weeklyData.map(d=>d.team),
+      datasets:[{data:weeklyData.map(d=>d.pausas), backgroundColor:'rgba(125,139,122,0.75)', borderRadius:8, borderSkipped:false}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>`${v.raw} pausas`}}},scales:{x:{grid:{color:gridColor},ticks:tickStyle},y:{grid:{color:gridColor},ticks:tickStyle}}}
+  });
+
+  // LINE
+  const lineCtx = document.getElementById('lineChart').getContext('2d');
+  const datasets = Object.keys(teamColors).map(team=>({
+    label:team, data:trendData.map(d=>d[team]),
+    borderColor:teamColors[team], backgroundColor:'transparent',
+    borderWidth:2, pointRadius:3, tension:0.3
+  }));
+  lineChartInst = new Chart(lineCtx, {
+    type:'line',
+    data:{labels:trendData.map(d=>d.s), datasets},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11,family:'DM Sans'}}}},scales:{x:{grid:{color:gridColor},ticks:tickStyle},y:{grid:{color:gridColor},ticks:tickStyle}}}
+  });
+
+  // HOURLY
+  const hCtx = document.getElementById('hourlyChart').getContext('2d');
+  hourlyChartInst = new Chart(hCtx, {
+    type:'bar',
+    data:{
+      labels:hourlyData.map(d=>d.h),
+      datasets:[{data:hourlyData.map(d=>d.p), backgroundColor:'rgba(125,139,122,0.7)', borderRadius:6, borderSkipped:false}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>`${v.raw} pausas`}}},scales:{x:{grid:{color:gridColor},ticks:tickStyle},y:{grid:{color:gridColor},ticks:tickStyle}}}
+  });
+}
+
+// SUMMARY
+function renderSummary() {
+  const total    = weeklyData.reduce((s,t)=>s+t.pausas,0);
+  const totalMin = weeklyData.reduce((s,t)=>s+t.minutos,0);
+  const avgUso   = Math.round(weeklyData.reduce((s,t)=>s+t.adherencia,0)/weeklyData.length);
+  const best     = weeklyData.reduce((b,t)=>t.adherencia>b.adherencia?t:b);
+  // quota usage max team
+  const maxUso = weeklyData.reduce((b,t)=>t.uso>b.uso?t:b);
+  const quotaPill = maxUso.uso >= alertThreshold
+    ? `<div class="quota-pill ${maxUso.uso>=95?'danger':'warn'}">${maxUso.uso>=95?'⚠ Cupo casi agotado':'⚡ '+maxUso.team+' cerca del límite'}</div>` : '';
+
+  document.getElementById('summaryGrid').innerHTML = `
+    <div class="scard">
+      <div class="scard-icon teal"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M9 5.5v4l2.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+      <div class="scard-label">Total de pausas</div>
+      <div class="scard-value">${total}</div>
+      <div class="scard-sub">Esta semana</div>
+      <div class="scard-trend up"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 8l3-3 2 2 3-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>+6%</div>
+    </div>
+    <div class="scard">
+      <div class="scard-icon blue"><svg viewBox="0 0 18 18" fill="none"><circle cx="7" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="13" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M1 16c0-3.31 2.69-6 6-6s6 2.69 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+      <div class="scard-label">Minutos acumulados</div>
+      <div class="scard-value">${totalMin.toLocaleString()}</div>
+      <div class="scard-sub">~${Math.round(totalMin/60)} horas</div>
+    </div>
+    <div class="scard">
+      <div class="scard-icon green"><svg viewBox="0 0 18 18" fill="none"><path d="M3 9.5l4 4 8-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="scard-label">Tasa de uso</div>
+      <div class="scard-value">${avgUso}%</div>
+      <div class="scard-sub">Del total de empleados</div>
+    </div>
+    <div class="scard">
+      <div class="scard-icon amber"><svg viewBox="0 0 18 18" fill="none"><path d="M9 2l1.8 5.4H17l-4.9 3.6 1.8 5.4L9 13l-4.9 3.4 1.8-5.4L1 7.4h6.2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></div>
+      <div class="scard-label">Mayor adherencia</div>
+      <div class="scard-value" style="font-size:20px">${best.team}</div>
+      <div class="scard-sub">${best.adherencia}% tasa de uso</div>
+    </div>
+    <div class="scard">
+      <div class="scard-icon yellow"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M9 6v3l2 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+      <div class="scard-label">NPS de sesión</div>
+      <div class="scard-value">4.2 <span style="font-size:14px;color:var(--muted-fg);font-weight:400">/ 5</span></div>
+      <div class="scard-sub">Promedio esta semana</div>
+      ${quotaPill}
+    </div>`;
+}
+
+// TABLE
+function renderTable() {
+  const trends = ['+7%','-3%','+5%','+4%','+2%'];
+  const trendUp = [true,false,true,true,true];
+  document.getElementById('teamsBody').innerHTML = weeklyData.map((t,i)=>{
+    const usoClass = t.uso >= 90 ? 'quota-warn' : 'quota-ok';
+    const usoText  = t.uso >= 90 ? `⚠ ${t.uso}% del cupo` : `${t.uso}% del cupo`;
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:10px"><div class="team-dot" style="background:${teamColors[t.team]}"></div>${t.team}</div></td>
+      <td>${t.pausas}</td>
+      <td>${t.minutos.toLocaleString()}</td>
+      <td><div class="progress-cell"><div class="progress-bar"><div class="progress-fill" style="width:${t.adherencia}%"></div></div>${t.adherencia}%</div></td>
+      <td>${t.nps.toFixed(1)}</td>
+      <td class="quota-cell ${usoClass}">${usoText}</td>
+      <td><span class="${trendUp[i]?'trend-up':'trend-down'}">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="${trendUp[i]?'M2 9l3-3 2 2 4-5':'M2 4l3 3 2-2 4 5'}" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        ${trends[i]}
+      </span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ALERT BANNER
+function checkAlertBanner() {
+  const maxUso = weeklyData.reduce((b,t)=>t.uso>b.uso?t:b);
+  const banner = document.getElementById('alertBanner');
+  if(maxUso.uso >= alertThreshold) {
+    banner.classList.remove('hidden');
+    document.getElementById('alertText').innerHTML =
+      `<strong>${maxUso.team}</strong> está cerca del límite semanal de pausas por persona (${maxUso.uso}% del cupo usado). Considerá ajustar los límites en Configuración.`;
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+// DROPDOWNS
+let openDropdown = null;
+function toggleDropdown(id) {
+  const menu = document.getElementById(id+'Menu');
+  const btn  = document.getElementById(id+'Btn');
+  if(openDropdown && openDropdown !== id) {
+    document.getElementById(openDropdown+'Menu').classList.remove('open');
+    document.getElementById(openDropdown+'Btn').classList.remove('open');
+  }
+  menu.classList.toggle('open');
+  btn.classList.toggle('open');
+  openDropdown = menu.classList.contains('open') ? id : null;
+}
+document.addEventListener('click', e => {
+  if(!e.target.closest('.dropdown')) {
+    document.querySelectorAll('.dropdown-menu').forEach(m=>m.classList.remove('open'));
+    document.querySelectorAll('.dropdown-btn').forEach(b=>b.classList.remove('open'));
+    openDropdown = null;
+  }
+});
+function selectPeriod(val, label) {
+  document.getElementById('periodLabel').textContent = label;
+  document.querySelectorAll('#periodMenu .dropdown-item').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('pageSubtitle').textContent = `Datos agregados por equipo · ${label}`;
+  toggleDropdown('period');
+}
+function selectSector(val, label) {
+  document.getElementById('sectorLabel').textContent = label;
+  document.querySelectorAll('#sectorMenu .dropdown-item').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  toggleDropdown('sector');
+}
+
+// SETTINGS PANEL
+function openPanel() {
+  const btn = document.getElementById('gearBtn');
+  btn.classList.add('spinning');
+  setTimeout(()=>btn.classList.remove('spinning'),500);
+  document.getElementById('settingsPanel').classList.add('open');
+  document.getElementById('panelOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closePanel() {
+  document.getElementById('settingsPanel').classList.remove('open');
+  document.getElementById('panelOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function selectCabina(el, name) {
+  document.querySelectorAll('.cab-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('cabinaLabel').textContent = name;
+}
+
+function updateSlider(which) {
+  const slider = document.getElementById('slider'+which);
+  const val = parseInt(slider.value);
+  const display = document.getElementById('val'+which);
+
+  if(which === 'Consec') {
+    display.innerHTML = `${val} <span style="font-size:11px;font-weight:400;color:var(--muted-fg)">bloque${val>1?'s':''}</span>`;
+  } else if(which === 'Alerta') {
+    display.innerHTML = `${val}<span style="font-size:11px;font-weight:400;color:var(--muted-fg)">%</span>`;
+  } else {
+    display.textContent = val;
+  }
+
+  // update preview
+  const dia     = parseInt(document.getElementById('sliderDia').value);
+  const semana  = parseInt(document.getElementById('sliderSemana').value);
+  const consec  = parseInt(document.getElementById('sliderConsec').value);
+  const alerta  = parseInt(document.getElementById('sliderAlerta').value);
+  document.getElementById('previewDia').textContent    = dia;
+  document.getElementById('previewSemana').textContent = semana;
+  document.getElementById('previewConsec').textContent = (consec*20)+' min';
+  document.getElementById('previewAlerta').textContent = alerta+'%';
+
+  // update gradient on slider
+  const pct = ((val - slider.min) / (slider.max - slider.min)) * 100;
+  slider.style.background = `linear-gradient(to right, var(--primary) ${pct}%, var(--muted) ${pct}%)`;
+}
+
+function saveConfig() {
+  config.dia    = parseInt(document.getElementById('sliderDia').value);
+  config.semana = parseInt(document.getElementById('sliderSemana').value);
+  config.consec = parseInt(document.getElementById('sliderConsec').value);
+  alertThreshold= parseInt(document.getElementById('sliderAlerta').value);
+  closePanel();
+  checkAlertBanner();
+  showToast('Configuración guardada correctamente');
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('success','show');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// init sliders gradient
+['Dia','Semana','Consec','Alerta'].forEach(w => {
+  const s = document.getElementById('slider'+w);
+  const pct = ((s.value - s.min) / (s.max - s.min)) * 100;
+  s.style.background = `linear-gradient(to right, var(--primary) ${pct}%, var(--muted) ${pct}%)`;
+});
+
+// INIT
+initCharts();
+renderSummary();
+renderTable();
+checkAlertBanner();
+</script>
+</body>
+</html>
